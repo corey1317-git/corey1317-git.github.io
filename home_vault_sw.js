@@ -1,6 +1,6 @@
 // Home Vault service worker: offline support for the installed app.
 // Pages: network-first (always fresh when online). Static assets + CDNs: stale-while-revalidate.
-const CACHE = 'home-vault-v1';
+const CACHE = 'home-vault-v2';
 const CORE = [
     'home_vault.html',
     'home_vault.webmanifest',
@@ -9,7 +9,7 @@ const CORE = [
     'home_vault_icon_512.png',
     'home_vault_apple_touch.png'
 ];
-const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
+const CDN_HOSTS = ['cdn.tailwindcss.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'www.gstatic.com'];
 
 self.addEventListener('install', event => {
     event.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -42,7 +42,7 @@ self.addEventListener('fetch', event => {
     }
 
     const sameOrigin = url.origin === self.location.origin;
-    if (!sameOrigin && !CDN_HOSTS.includes(url.hostname)) return; // AI APIs, analytics, etc. go straight to the network
+    if (!sameOrigin && !CDN_HOSTS.includes(url.hostname)) return; // AI, Firebase, RentCast, analytics go straight to the network
 
     event.respondWith(
         caches.open(CACHE).then(cache =>

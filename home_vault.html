@@ -156,6 +156,9 @@
                 <button onclick="openModal('install-modal')" id="install-btn" class="hidden h-9 px-3 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-xl text-xs font-bold transition items-center gap-1.5">
                     <i class="fa-solid fa-mobile-screen-button"></i> Install
                 </button>
+                <button onclick="openSettings('sync-section')" id="sync-btn" class="h-9 w-9 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition flex items-center justify-center text-slate-600" title="Sync between phones" aria-label="Sync between phones">
+                    <i id="sync-icon" class="fa-solid fa-cloud"></i>
+                </button>
                 <button onclick="openSettings()" class="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-xl transition flex items-center justify-center relative" title="Settings" aria-label="Settings">
                     <i class="fa-solid fa-gear"></i>
                     <span id="ai-dot" class="hidden absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 border-2 border-slate-950"></span>
@@ -355,6 +358,19 @@
         <!-- ═══════════ PANEL: HOMES ═══════════ -->
         <section id="panel-homes" class="space-y-4 hidden">
 
+            <!-- Live listings -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3" id="listings-card">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-house-flag text-sky-400"></i> For sale near Portage <span id="listings-count" class="text-[10px] font-bold text-slate-500"></span></h2>
+                        <p id="listings-meta" class="text-[11px] text-slate-500 mt-0.5"></p>
+                    </div>
+                    <button id="listings-refresh" onclick="fetchListings()" class="hidden flex-shrink-0 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-extrabold rounded-xl transition"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+                </div>
+                <div id="listings-controls" class="hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar"></div>
+                <div id="listings-body" class="space-y-3"></div>
+            </div>
+
             <!-- Must-haves -->
             <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-4">
                 <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-list-check text-sky-400"></i> Must-haves</h2>
@@ -545,7 +561,7 @@
                         <li>Tap <span class="text-slate-200 font-semibold">Install</span> when prompted, or the &#8942; menu &rarr; <span class="text-slate-200 font-semibold">Install app</span></li>
                     </ol>
                 </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed">It opens full-screen with its own icon and works offline. Your data stays on each phone. Use Settings &rarr; Share plan to send your numbers to each other.</p>
+                <p class="text-[11px] text-slate-500 leading-relaxed">It opens full-screen with its own icon and works offline. Turn on Settings &rarr; Sync between phones so you both see the same plan.</p>
             </div>
         </div>
     </div>
@@ -564,6 +580,14 @@
                     <div><label class="field-label">Buyer 1</label><input class="field" type="text" data-bind="names.a"></div>
                     <div><label class="field-label">Buyer 2</label><input class="field" type="text" data-bind="names.b"></div>
                 </div>
+            </div>
+
+            <div id="sync-section" class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Sync between phones</p>
+                    <span id="sync-pill" class="text-[10px] font-bold"></span>
+                </div>
+                <div id="sync-body" class="space-y-3"></div>
             </div>
 
             <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
@@ -589,7 +613,7 @@
 
             <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
                 <p class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Share &amp; backup</p>
-                <p class="text-[11px] text-slate-400 leading-relaxed">Your plan lives on this phone only. Send it to each other with Share plan, then open the file with Import on the other phone.</p>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Save a copy of your plan as a file. With sync on you don't need this, but it's a handy backup.</p>
                 <div class="grid grid-cols-3 gap-2">
                     <button onclick="sharePlan()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-share-nodes mr-1"></i>Share</button>
                     <button onclick="exportPlan()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-download mr-1"></i>Export</button>
@@ -616,19 +640,18 @@
         function defaultAreas() {
             return [
                 { name: 'Portage, MI', slug: 'portage-mi', zips: ['49024', '49002', '49081'], on: true },
-                { name: 'Kalamazoo, MI', slug: 'kalamazoo-mi', zips: ['49009', '49008', '49048', '49006', '49001'], on: true },
+                { name: 'Kalamazoo, MI', slug: 'kalamazoo-mi', zips: ['49009', '49008', '49048', '49001', '49006'], on: true },
+                { name: 'Vicksburg, MI', slug: 'vicksburg-mi', zips: ['49097'], on: true },
+                { name: 'Schoolcraft, MI', slug: 'schoolcraft-mi', zips: ['49087'], on: true },
                 { name: 'Richland, MI', slug: 'richland-mi', zips: ['49083'], on: true },
                 { name: 'Galesburg, MI', slug: 'galesburg-mi', zips: ['49053'], on: true },
-                { name: 'Augusta, MI', slug: 'augusta-mi', zips: ['49012'], on: true },
-                { name: 'Battle Creek, MI', slug: 'battle-creek-mi', zips: ['49015', '49014', '49017'], on: true },
-                { name: 'Marshall, MI', slug: 'marshall-mi', zips: ['49068'], on: true },
-                { name: 'Vicksburg, MI', slug: 'vicksburg-mi', zips: ['49097'], on: false }
+                { name: 'Mattawan, MI', slug: 'mattawan-mi', zips: ['49071'], on: true }
             ];
         }
 
         function defaultState() {
             return {
-                version: 1,
+                version: 2,
                 names: { a: 'Corey', b: 'Lauren' },
                 plan: { monthsToPurchase: 12, appreciation: 3, savings: 0, reserve: 5000 },
                 homes: [
@@ -636,20 +659,22 @@
                         id: 'a', street: '5932 Mount Vernon Ave', cityLine: 'Portage, MI 49024',
                         value: 189600, low: 176000, high: 203000, asOf: 'Oct 24, 2026',
                         beds: 2, baths: 1, sqft: 1084, built: 1948,
-                        mortgageBalance: null, rate: null, monthlyPI: null, escrow: null,
+                        mortgageBalance: 97000, rate: null, monthlyPI: null, escrow: null,
                         plan: 'sell', agentPct: 5.5, closingPct: 1, transferTax: true, repairs: 0, rent: null
                     },
                     {
                         id: 'b', street: '213 N Sycamore St', cityLine: 'Marshall, MI 49068',
                         value: 176800, low: 159000, high: 193000, asOf: 'Oct 24, 2026',
                         beds: 2, baths: 2, sqft: 962, built: 1920,
-                        mortgageBalance: null, rate: null, monthlyPI: null, escrow: null,
+                        mortgageBalance: 60240, rate: null, monthlyPI: null, escrow: null,
                         plan: 'sell', agentPct: 5.5, closingPct: 1, transferTax: true, repairs: 0, rent: null
                     }
                 ],
                 buy: { price: 350000, rate: 7.0, term: 30, taxRate: 1.4, insuranceYr: 1400, pmiRate: 0.5, hoaMo: 0, closingPct: 3, downMode: '20', downCustom: 70000, appreciation: 3 },
                 afford: { income: null, debts: null, budget: null },
                 search: { minBeds: 3, minBaths: 2, minGarage: 2, maxPriceMode: 'target', maxPrice: 400000, areas: defaultAreas() },
+                // Live for-sale listings (RentCast). Shared between phones when sync is on.
+                listings: { key: '', radius: 15, fetchedAt: null, items: [], hidden: {}, sort: 'newest', showHidden: false, error: null, calls: { month: '', count: 0 } },
                 saved: [],
                 savedSort: 'added',
                 chat: []
@@ -672,22 +697,34 @@
         function mergeState(base, stored) {
             if (!stored || typeof stored !== 'object') return base;
             const out = Object.assign({}, base, stored);
-            ['names', 'plan', 'buy', 'afford', 'search'].forEach(k => {
+            ['names', 'plan', 'buy', 'afford', 'search', 'listings'].forEach(k => {
                 out[k] = Object.assign({}, base[k], stored[k] || {});
             });
             if (!Array.isArray(out.homes) || out.homes.length !== 2) out.homes = base.homes;
             out.homes = out.homes.map((h, i) => Object.assign({}, base.homes[i], h));
             if (!Array.isArray(out.search.areas)) out.search.areas = defaultAreas();
+            if (!Array.isArray(out.listings.items)) out.listings.items = [];
             if (!Array.isArray(out.saved)) out.saved = [];
             if (!Array.isArray(out.chat)) out.chat = [];
+            // v2: payoff balances provided by Corey & Lauren; search narrowed to the Portage area
+            if (!(stored.version >= 2)) {
+                out.homes.forEach((h, i) => { if (h.mortgageBalance == null) h.mortgageBalance = base.homes[i].mortgageBalance; });
+                out.search.areas = defaultAreas();
+                out.version = 2;
+            }
             return out;
         }
 
         let state = loadState();
 
-        function saveState() {
+        function persistLocal() {
             try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
             catch (e) { console.error('Could not save plan:', e); }
+        }
+
+        function saveState() {
+            persistLocal();
+            schedulePush();
         }
 
         // ═══════════ HELPERS ═══════════
@@ -1517,6 +1554,17 @@
                     body: `That's after about ${money(costs)} in agent fees, closing costs, and Michigan transfer tax on ${selling.length === 2 ? 'both sales' : 'the sale'}. Agent commissions are negotiable since the 2024 rule changes. Interview at least two listing agents and ask for their rate in writing.` });
             }
 
+            const L = state.listings;
+            if (L.fetchedAt && L.items.length) {
+                const m = L.items.filter(listingMatches).filter(x => !(L.hidden || {})[x.id]);
+                if (m.length) {
+                    const fresh = m.filter(x => x.dom != null && x.dom <= 7).length;
+                    const cheapest = m.slice().sort((a, b) => a.price - b.price)[0];
+                    tips.push({ tone: 'sky', icon: 'fa-house-flag', title: `${m.length} homes for sale fit your must-haves`,
+                        body: `${fresh ? `${fresh} hit the market this week. ` : ''}Cheapest is ${cheapest.street || cheapest.address} at ${money(cheapest.price)}. The listing feed doesn't include garage size, so check that on Zillow before you fall in love.` });
+                }
+            }
+
             if (c.leftover < 0) {
                 tips.push({ tone: 'rose', icon: 'fa-circle-exclamation', title: `Short ${money(-c.leftover)} at ${moneyK(c.price)}`,
                     body: `Either lower the target price, put less down (and eat some PMI), or add savings. With what you've got, ${money(maxPriceNoPMI(t))} keeps you at 20% down with no PMI.` });
@@ -1590,7 +1638,8 @@
             'Should we sell both houses?',
             'Sell first or buy first?',
             'How do we lower our payment?',
-            'What should we look for on tours?'
+            'What should we look for on tours?',
+            "What's for sale right now?"
         ];
 
         function geminiKey() { return localStorage.getItem('hv_gemini_api_key') || localStorage.getItem('wv_gemini_api_key') || ''; }
@@ -1676,6 +1725,15 @@
                 income: state.afford,
                 mustHaves: { minBeds: state.search.minBeds, minBaths: state.search.minBaths, minGarageSpaces: state.search.minGarage, searchMaxPrice: searchMaxPrice() },
                 searchAreas: state.search.areas.filter(a => a.on).map(a => a.name),
+                liveListings: state.listings.fetchedAt ? (() => {
+                    const m = state.listings.items.filter(listingMatches).filter(x => !(state.listings.hidden || {})[x.id]);
+                    return {
+                        source: 'RentCast (active MLS listings; garage size not included)',
+                        updated: new Date(state.listings.fetchedAt).toISOString().slice(0, 10),
+                        matchingCount: m.length,
+                        newest: m.slice().sort((a, b) => (a.dom ?? 9999) - (b.dom ?? 9999)).slice(0, 15).map(x => ({ address: x.address, price: x.price, beds: x.beds, baths: x.baths, sqft: x.sqft, yearBuilt: x.year, daysOnMarket: x.dom, hoa: x.hoa }))
+                    };
+                })() : 'not loaded',
                 savedHomes: state.saved.map(h => ({
                     address: h.address, price: h.price, beds: h.beds, baths: h.baths, garage: h.garage, sqft: h.sqft, year: h.year, hoa: h.hoa,
                     status: h.status, notes: h.notes, ratings: { [nameOf('a')]: h.ratingA || null, [nameOf('b')]: h.ratingB || null },
@@ -1685,7 +1743,7 @@
         }
 
         function jimSystemPrompt() {
-            return `You are Big Jim, a rock hyrax with 90s swagger who is Thorpe Tech's Chief Mascot & Chief Security Officer, moonlighting as the home-buying consultant inside the Home Vault app. You're advising ${nameOf('a')} and ${nameOf('b')}, a couple in southwest Michigan who each own a house and plan to buy one home together within about a year. Their must-haves: ${state.search.minBeds}+ bedrooms, ${state.search.minBaths}+ bathrooms, ${state.search.minGarage}+ car garage.
+            return `You are Big Jim, a rock hyrax with 90s swagger who is Thorpe Tech's Chief Mascot & Chief Security Officer, moonlighting as the home-buying consultant inside the Home Vault app. You're advising ${nameOf('a')} and ${nameOf('b')}, a couple who each own a house (his in Portage, hers in Marshall) and plan to buy one home together in the Portage, Michigan area (Kalamazoo County) within about a year. Their must-haves: ${state.search.minBeds}+ bedrooms, ${state.search.minBaths}+ bathrooms, ${state.search.minGarage}+ car garage.
 
 Style: warm, direct, a little funny (occasional hyrax/sniff-test/rock-sunbathing jokes, never more than one per answer). Substance first. Use their real numbers from the snapshot, do the math, and give a clear recommendation. Keep answers under about 180 words unless they ask for detail. Use short paragraphs or "-" bullets and **bold** for key numbers. No tables, no headings.
 
@@ -1764,6 +1822,14 @@ ${JSON.stringify(snapshot())}`;
             const c = buyCalc(state.buy.price, { totals: t });
             const s = q.toLowerCase();
             const A = nameOf('a'), B = nameOf('b');
+            if (/listing|for sale|on the market|available|what's out/.test(s)) {
+                const L = state.listings;
+                if (!L.fetchedAt) return `I haven't sniffed the market yet. Add a free RentCast key on the Homes tab and tap Refresh, and I'll keep an eye on what's for sale around Portage.`;
+                const m = L.items.filter(listingMatches).filter(x => !(L.hidden || {})[x.id]);
+                if (!m.length) return `Nothing on the market fits your must-haves right now (updated ${timeAgo(L.fetchedAt)}). Try a bigger radius or bump the max price.`;
+                const top = m.slice().sort((a, b) => (a.dom ?? 9999) - (b.dom ?? 9999)).slice(0, 5);
+                return `**${m.length} homes** fit your must-haves (updated ${timeAgo(L.fetchedAt)}). Newest:\n${top.map(x => `- ${x.street || x.address}: **${money(x.price)}**, ${x.beds} bd / ${x.baths} ba${x.sqft ? `, ${num(x.sqft).toLocaleString()} sqft` : ''}${x.dom != null ? `, ${x.dom} days listed` : ''}`).join('\n')}\nGarage size isn't in the feed, so check those on Zillow.`;
+            }
             if (/afford|how much|budget|max|price/.test(s)) {
                 const budget = housingBudget();
                 let out = `Here's the sniff test at your current numbers:\n- Cash available after reserve: **${money(t.spendable)}**\n- Highest price with 20% down (no PMI): **${money(maxPriceNoPMI(t))}**`;
@@ -1848,12 +1914,15 @@ ${JSON.stringify(snapshot())}`;
         }
 
         // ═══════════ SETTINGS ═══════════
-        function openSettings() {
+        function openSettings(section) {
             document.getElementById('set-gemini').value = localStorage.getItem('hv_gemini_api_key') || '';
             document.getElementById('set-gemini').placeholder = !localStorage.getItem('hv_gemini_api_key') && localStorage.getItem('wv_gemini_api_key') ? 'Using your Wealth Vault key' : 'Paste Gemini key';
             document.getElementById('set-openrouter').value = localStorage.getItem('hv_openrouter_api_key') || '';
             bindInputs(document.getElementById('settings-modal'));
+            sync.view = '';
+            renderSyncUI();
             openModal('settings-modal');
+            if (section) setTimeout(() => { const el = document.getElementById(section); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
         }
 
         function saveKeys() {
@@ -1884,7 +1953,7 @@ ${JSON.stringify(snapshot())}`;
         }
 
         function planBlob() {
-            const data = Object.assign({}, state, { chat: [] });
+            const data = Object.assign({}, state, { chat: [], listings: Object.assign({}, state.listings, { key: '' }) });
             return new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         }
         function planFilename() { return `home-vault-plan-${new Date().toISOString().slice(0, 10)}.json`; }
@@ -1918,9 +1987,10 @@ ${JSON.stringify(snapshot())}`;
                     const incoming = JSON.parse(reader.result);
                     if (!incoming || !incoming.homes || !incoming.buy) throw new Error('Not a Home Vault plan');
                     if (!confirm('Replace the plan on this phone with the imported one?')) return;
-                    const chat = state.chat;
+                    const chat = state.chat, key = state.listings.key;
                     state = mergeState(defaultState(), incoming);
                     state.chat = chat;
+                    if (!state.listings.key) state.listings.key = key;
                     saveState();
                     renderAll();
                     closeModal('settings-modal');
@@ -1940,6 +2010,765 @@ ${JSON.stringify(snapshot())}`;
             renderAll();
             closeModal('settings-modal');
             showToast('Reset to the starting plan', 'sky');
+        }
+
+        // ═══════════ LIVE LISTINGS (RentCast) ═══════════
+        // Zillow and Redfin have no public listing feeds. RentCast licenses active MLS listings
+        // and allows showing them in apps; its free plan covers 50 lookups a month.
+        const PORTAGE_CENTER = { lat: 42.2012, lng: -85.5800 };
+        const RENTCAST_FREE_CALLS = 50;
+        let listingsBusy = false;
+        let listingsShown = 25;
+
+        function thisMonth() { return new Date().toISOString().slice(0, 7); }
+        function callsThisMonth() {
+            const c = state.listings.calls || {};
+            return c.month === thisMonth() ? num(c.count) : 0;
+        }
+
+        function timeAgo(ts) {
+            if (!ts) return 'never';
+            const m = Math.round((Date.now() - ts) / 60000);
+            if (m < 1) return 'just now';
+            if (m < 60) return `${m} min ago`;
+            const h = Math.round(m / 60);
+            if (h < 24) return `${h} hr ago`;
+            const d = Math.round(h / 24);
+            return `${d} day${d === 1 ? '' : 's'} ago`;
+        }
+
+        function zillowAddressUrl(address) {
+            return `https://www.zillow.com/homes/${encodeURIComponent(String(address).replace(/\s+/g, '-')).replace(/%2C/g, ',')}_rb/`;
+        }
+
+        function trimListing(x) {
+            return {
+                id: String(x.id || x.formattedAddress || ''),
+                address: x.formattedAddress || [x.addressLine1, x.city, x.state].filter(Boolean).join(', '),
+                street: x.addressLine1 || '',
+                city: x.city || '',
+                zip: x.zipCode || '',
+                price: x.price ?? null,
+                beds: x.bedrooms ?? null,
+                baths: x.bathrooms ?? null,
+                sqft: x.squareFootage ?? null,
+                lot: x.lotSize ?? null,
+                year: x.yearBuilt ?? null,
+                dom: x.daysOnMarket ?? null,
+                hoa: x.hoa?.fee ?? null,
+                mls: x.mlsNumber || null,
+                agent: x.listingAgent?.name || null,
+                office: x.listingOffice?.name || null
+            };
+        }
+
+        function listingMatches(x) {
+            const s = state.search;
+            const mp = searchMaxPrice();
+            return num(x.beds) >= num(s.minBeds) && num(x.baths) >= num(s.minBaths) && (!mp || num(x.price) <= mp);
+        }
+
+        async function fetchListings() {
+            const L = state.listings;
+            const key = (L.key || '').trim();
+            if (!key || listingsBusy) return renderListings();
+            const used = callsThisMonth();
+            if (L.fetchedAt && Date.now() - L.fetchedAt < 12 * 3600e3 &&
+                !confirm(`Listings were refreshed ${timeAgo(L.fetchedAt)}. Refresh again? Each refresh uses 1 of your ${RENTCAST_FREE_CALLS} free lookups this month (${used} used).`)) return;
+            if (used >= RENTCAST_FREE_CALLS &&
+                !confirm(`You've used ${used} lookups this month. More may cost extra on your RentCast plan. Continue?`)) return;
+
+            listingsBusy = true;
+            renderListings();
+            const s = state.search;
+            const params = new URLSearchParams({
+                latitude: PORTAGE_CENTER.lat,
+                longitude: PORTAGE_CENTER.lng,
+                radius: num(L.radius) || 15,
+                propertyType: 'Single Family',
+                bedrooms: `${num(s.minBeds)}:*`,
+                bathrooms: `${num(s.minBaths)}:*`,
+                status: 'Active',
+                limit: 500
+            });
+            const mp = searchMaxPrice();
+            if (mp) params.set('price', `*:${mp}`);
+            const call = p => fetch(`https://api.rentcast.io/v1/listings/sale?${p}`, { headers: { 'X-Api-Key': key, 'Accept': 'application/json' } });
+            const countCall = () => { L.calls = { month: thisMonth(), count: callsThisMonth() + 1 }; };
+
+            try {
+                let res = await call(params);
+                countCall();
+                if (res.status === 400 && params.has('price')) {
+                    // price range not accepted: fetch without it and filter here
+                    params.delete('price');
+                    res = await call(params);
+                    countCall();
+                }
+                if (!res.ok) {
+                    let detail = '';
+                    try { const b = await res.json(); detail = b.message || b.error || ''; } catch (e) {}
+                    L.error = res.status === 401 || res.status === 403 ? 'RentCast rejected the key. Check it in your RentCast dashboard, then tap Change key.'
+                        : res.status === 429 ? 'RentCast says the request limit is reached. Try again later or check your plan.'
+                        : `RentCast error ${res.status}${detail ? ': ' + detail : ''}`;
+                } else {
+                    const data = await res.json();
+                    const arr = Array.isArray(data) ? data : (data.listings || data.data || []);
+                    let items = arr.map(trimListing).filter(x => x.id && x.price);
+                    if (mp) items = items.filter(x => x.price <= mp);
+                    L.items = items.slice(0, 400);
+                    const ids = new Set(L.items.map(x => x.id));
+                    L.hidden = L.hidden || {};
+                    Object.keys(L.hidden).forEach(id => { if (!ids.has(id)) delete L.hidden[id]; });
+                    L.fetchedAt = Date.now();
+                    L.error = null;
+                }
+            } catch (err) {
+                L.error = 'blocked';
+            }
+            listingsBusy = false;
+            listingsShown = 25;
+            saveState();
+            renderListings();
+            renderJim();
+            if (!L.error) showToast(`${L.items.length} listings loaded`, 'emerald');
+        }
+
+        function saveRentcastKey() {
+            const v = (document.getElementById('rentcast-key').value || '').trim();
+            if (v.length < 10) return showToast('Paste the full RentCast API key', 'rose');
+            state.listings.key = v;
+            state.listings.error = null;
+            saveState();
+            fetchListings();
+        }
+
+        function changeRentcastKey() {
+            if (!confirm('Remove the saved RentCast key? You can paste a new one after.')) return;
+            state.listings.key = '';
+            state.listings.error = null;
+            saveState();
+            renderListings();
+        }
+
+        function setListingsRadius(v) {
+            state.listings.radius = Number(v);
+            saveState();
+            showToast(`Tap Refresh to search within ${v} miles`, 'sky');
+        }
+
+        function setListingsSort(k) { state.listings.sort = k; saveState(); renderListings(); }
+        function toggleShowHidden() { state.listings.showHidden = !state.listings.showHidden; saveState(); renderListings(); }
+        function toggleHideListing(id) {
+            const H = state.listings.hidden = state.listings.hidden || {};
+            if (H[id]) delete H[id]; else H[id] = true;
+            saveState();
+            renderListings();
+        }
+        function showMoreListings() { listingsShown += 25; renderListings(); }
+
+        function saveListing(id) {
+            const x = state.listings.items.find(i => i.id === id);
+            if (!x || state.saved.some(h => h.listingId === id)) return;
+            state.saved.push({
+                id: 'h' + Date.now().toString(36), addedAt: Date.now(), ratingA: 0, ratingB: 0, listingId: id,
+                url: zillowAddressUrl(x.address), address: x.address, price: x.price, beds: x.beds, baths: x.baths,
+                garage: null, sqft: x.sqft, year: x.year, hoa: x.hoa,
+                notes: [x.mls ? `MLS #${x.mls}` : '', x.agent ? `Agent: ${x.agent}${x.office ? ' (' + x.office + ')' : ''}` : ''].filter(Boolean).join(' · '),
+                status: 'interested'
+            });
+            saveState();
+            renderListings();
+            renderSaved();
+            renderJim();
+            showToast('Saved. Add the garage size once you check it.', 'emerald');
+        }
+
+        function askJimAboutListing(id) {
+            const x = state.listings.items.find(i => i.id === id);
+            if (!x) return;
+            switchTab('jim');
+            const facts = [money(x.price), `${x.beds} bd`, `${x.baths} ba`, x.sqft ? `${num(x.sqft).toLocaleString()} sqft` : null, x.year ? `built ${x.year}` : null, x.dom != null ? `${x.dom} days on market` : null].filter(Boolean).join(', ');
+            askJim(`What do you think of ${x.address} (${facts})? Does it fit our plan, and what should we check (garage size isn't listed)?`);
+        }
+
+        function renderListings() {
+            const L = state.listings;
+            const body = document.getElementById('listings-body');
+            const meta = document.getElementById('listings-meta');
+            const refresh = document.getElementById('listings-refresh');
+            const controls = document.getElementById('listings-controls');
+            const countEl = document.getElementById('listings-count');
+            const hasKey = !!(L.key || '').trim();
+
+            refresh.classList.toggle('hidden', !hasKey);
+            refresh.disabled = listingsBusy;
+            refresh.innerHTML = listingsBusy ? '<i class="fa-solid fa-spinner animate-spin mr-1"></i>Loading' : '<i class="fa-solid fa-rotate mr-1"></i>Refresh';
+
+            if (!hasKey) {
+                controls.classList.add('hidden');
+                countEl.textContent = '';
+                meta.textContent = 'Live MLS listings, right in the app';
+                body.innerHTML = `
+                    <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-3">
+                        <p class="text-xs text-slate-300 leading-relaxed">Zillow and Redfin don't share their listings with other apps, so Home Vault pulls active MLS listings from <strong class="text-white">RentCast</strong>. The free plan covers ${RENTCAST_FREE_CALLS} refreshes a month, plenty for once a day.</p>
+                        <ol class="list-decimal pl-4 text-[11px] text-slate-400 space-y-1">
+                            <li>Make a free account at <a href="https://app.rentcast.io/app/api" target="_blank" rel="noopener" class="text-sky-400 underline">app.rentcast.io/app/api</a></li>
+                            <li>Choose the free Developer plan and create an API key</li>
+                            <li>Paste it here. With sync on, ${esc(nameOf('b'))}'s phone gets it too.</li>
+                        </ol>
+                        <div class="flex gap-2">
+                            <input id="rentcast-key" class="field flex-1" type="password" placeholder="RentCast API key" autocomplete="off">
+                            <button onclick="saveRentcastKey()" class="px-4 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-extrabold rounded-xl">Save</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const radiusSelect = `<select onchange="setListingsRadius(this.value)" class="bg-slate-900 border border-slate-800 rounded-md px-1 py-0.5 text-[11px] text-slate-200" aria-label="Search radius">${[5, 10, 15, 20, 25].map(r => `<option value="${r}" ${num(L.radius) === r ? 'selected' : ''}>${r} mi</option>`).join('')}</select>`;
+            meta.innerHTML = `Within ${radiusSelect} of Portage · ${L.fetchedAt ? 'updated ' + timeAgo(L.fetchedAt) : 'not loaded yet'} · ${callsThisMonth()}/${RENTCAST_FREE_CALLS} lookups this month`;
+
+            const hidden = L.hidden || {};
+            const matching = L.items.filter(listingMatches);
+            const hiddenCount = matching.filter(x => hidden[x.id]).length;
+            const t = totals();
+            let rows = matching.filter(x => L.showHidden || !hidden[x.id]).map(x => ({ x, c: buyCalc(x.price, { totals: t, hoa: x.hoa }) }));
+            const sorters = {
+                newest: (a, b) => (a.x.dom ?? 9999) - (b.x.dom ?? 9999),
+                price: (a, b) => a.x.price - b.x.price,
+                payment: (a, b) => a.c.total - b.c.total
+            };
+            rows.sort(sorters[L.sort] || sorters.newest);
+            countEl.textContent = L.fetchedAt ? `(${rows.length})` : '';
+
+            controls.classList.toggle('hidden', !L.fetchedAt);
+            controls.innerHTML = [['newest', 'Newest'], ['price', 'Price'], ['payment', 'Payment']].map(([k, l]) =>
+                `<button onclick="setListingsSort('${k}')" class="px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${L.sort === k ? 'bg-sky-500/15 border-sky-500/40 text-sky-300' : 'bg-slate-900 border-slate-800 text-slate-400'}">${l}</button>`).join('') +
+                (hiddenCount ? `<button onclick="toggleShowHidden()" class="px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap bg-slate-900 border-slate-800 text-slate-400">${L.showHidden ? 'Hide passed' : `Show passed (${hiddenCount})`}</button>` : '') +
+                `<button onclick="changeRentcastKey()" class="ml-auto px-2 py-1 text-[10px] font-semibold text-slate-600 hover:text-slate-400 whitespace-nowrap">Change key</button>`;
+
+            let html = '';
+            if (L.error === 'blocked') {
+                html += `<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-xs text-rose-200 leading-relaxed"><i class="fa-solid fa-circle-exclamation text-rose-400 mr-1"></i>Couldn't reach RentCast. If you're online, RentCast may not allow requests straight from a web app. The fix is a tiny Firebase function that fetches for you. Ask Claude to add it.</div>`;
+            } else if (L.error) {
+                html += `<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-xs text-rose-200 leading-relaxed"><i class="fa-solid fa-circle-exclamation text-rose-400 mr-1"></i>${esc(L.error)}</div>`;
+            }
+            if (!L.fetchedAt) {
+                html += `<div class="text-center py-6 border border-dashed border-slate-800 rounded-2xl text-xs text-slate-500">${listingsBusy ? 'Sniffing out listings...' : 'Tap Refresh to load homes for sale.'}</div>`;
+            } else if (!rows.length) {
+                html += `<div class="text-center py-6 border border-dashed border-slate-800 rounded-2xl text-xs text-slate-500">Nothing matches your must-haves right now. Try a bigger radius or a higher max price.</div>`;
+            } else {
+                html += `<p class="text-[10px] text-slate-600">Garage size isn't in the MLS feed. Check it on Zillow, then add it when you save a home.</p>`;
+                html += rows.slice(0, listingsShown).map(({ x, c }) => {
+                    const saved = state.saved.some(h => h.listingId === x.id);
+                    const isHidden = !!hidden[x.id];
+                    return `
+                    <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-2.5 ${isHidden ? 'opacity-50' : ''}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-extrabold text-white leading-snug">${esc(x.street || x.address)}</p>
+                                <p class="text-[11px] text-slate-500">${esc(x.city)}${x.zip ? ' ' + esc(x.zip) : ''}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <p class="text-sm font-extrabold text-white tabular-nums">${money(x.price)}</p>
+                                ${x.dom != null && x.dom <= 7 ? '<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">New</span>' : x.dom != null ? `<p class="text-[10px] text-slate-500">${x.dom} days listed</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            ${criteriaBadges({ beds: x.beds, baths: x.baths, garage: null })}
+                            ${x.sqft ? `<span class="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-400">${num(x.sqft).toLocaleString()} sqft</span>` : ''}
+                            ${x.year ? `<span class="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-400">${esc(x.year)}</span>` : ''}
+                        </div>
+                        <p class="text-[11px] text-slate-400">About <span class="font-bold text-slate-200">${money(c.total)}/mo</span> · ${pct(c.downPct, 0)} down · <span class="${c.leftover >= 0 ? 'text-emerald-300' : 'text-rose-300'} font-semibold">${c.leftover >= 0 ? moneyK(c.leftover) + ' cash left' : moneyK(-c.leftover) + ' short'}</span></p>
+                        <div class="flex gap-2">
+                            <a href="${zillowAddressUrl(x.address)}" target="_blank" rel="noopener" class="flex-1 py-2 text-center rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-bold text-slate-200 hover:border-slate-700">Zillow <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+                            <button onclick="saveListing(${esc(JSON.stringify(x.id))})" ${saved ? 'disabled' : ''} class="flex-1 py-2 rounded-xl text-[11px] font-bold border ${saved ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-200'}">${saved ? '<i class="fa-solid fa-check mr-1"></i>Saved' : '<i class="fa-solid fa-heart mr-1"></i>Save'}</button>
+                            <button onclick="askJimAboutListing(${esc(JSON.stringify(x.id))})" class="flex-1 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-200">Ask Jim</button>
+                            <button onclick="toggleHideListing(${esc(JSON.stringify(x.id))})" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400" aria-label="${isHidden ? 'Unhide' : 'Pass on this home'}"><i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
+                        </div>
+                    </div>`;
+                }).join('');
+                if (rows.length > listingsShown) {
+                    html += `<button onclick="showMoreListings()" class="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300">Show more (${rows.length - listingsShown} left)</button>`;
+                }
+            }
+            body.innerHTML = html;
+        }
+
+        // ═══════════ SYNC BETWEEN PHONES (Firebase) ═══════════
+        // Paste your Firebase web config here to turn sync on for every phone without the
+        // setup screen. It isn't a secret: the sign-in and Firestore rules protect the data.
+        const FIREBASE_CONFIG = null;
+        const FIREBASE_VERSION = '10.12.2';
+        const SYNC_KEYS = ['names', 'plan', 'homes', 'buy', 'afford', 'search', 'listings'];
+        const FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /households/{householdId} {
+      allow read, update, delete: if request.auth != null
+        && request.auth.token.email in resource.data.members;
+      allow create: if request.auth != null
+        && request.auth.token.email in request.resource.data.members;
+    }
+  }
+}`;
+        const sync = { fb: null, user: null, hid: null, unsub: null, status: 'off', error: '', members: [], pushTimer: null, view: '' };
+
+        function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+        function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+
+        function firebaseConfig() {
+            if (FIREBASE_CONFIG) return FIREBASE_CONFIG;
+            try { return JSON.parse(lsGet('hv_firebase_config') || 'null'); } catch (e) { return null; }
+        }
+
+        // Accepts the snippet Firebase shows ("const firebaseConfig = { apiKey: "...", ... };") or plain JSON
+        function parseFirebaseConfig(text) {
+            const m = String(text || '').match(/\{[\s\S]*\}/);
+            if (!m) return null;
+            const src = m[0].replace(/'/g, '"').replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":').replace(/,\s*}/g, '}');
+            try {
+                const cfg = JSON.parse(src);
+                return cfg.apiKey && cfg.projectId && cfg.appId ? cfg : null;
+            } catch (e) { return null; }
+        }
+
+        // Key-order-independent JSON, so Firestore's field ordering never looks like a change
+        function stable(v) {
+            if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+            if (v && typeof v === 'object') {
+                return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + stable(v[k])).join(',') + '}';
+            }
+            return JSON.stringify(v === undefined ? null : v);
+        }
+        function plain(v) { return JSON.parse(JSON.stringify(v)); }
+
+        // Last version of each shared key both sides agreed on (for 3-way merges)
+        function syncBase() { try { return JSON.parse(lsGet('hv_sync_base') || '{}'); } catch (e) { return {}; } }
+        function setSyncBase(b) { lsSet('hv_sync_base', JSON.stringify(b)); }
+
+        async function loadFirebase() {
+            if (sync.fb) return sync.fb;
+            const cfg = firebaseConfig();
+            if (!cfg) return null;
+            const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+            const [appM, A, F] = await Promise.all([import(`${base}/firebase-app.js`), import(`${base}/firebase-auth.js`), import(`${base}/firebase-firestore.js`)]);
+            const app = appM.initializeApp(cfg);
+            sync.fb = { auth: A.getAuth(app), db: F.getFirestore(app), A, F };
+            return sync.fb;
+        }
+
+        async function initSync() {
+            if (!firebaseConfig()) { sync.status = 'off'; renderSyncUI(); return; }
+            sync.status = 'loading';
+            renderSyncUI();
+            let fb;
+            try { fb = await loadFirebase(); }
+            catch (err) {
+                sync.status = 'error';
+                sync.error = `Couldn't load Firebase (${err.message}). Check your connection and reopen the app.`;
+                renderSyncUI();
+                return;
+            }
+            fb.A.onAuthStateChanged(fb.auth, user => {
+                sync.user = user;
+                if (!user) { stopSync(); sync.status = 'signedout'; renderSyncUI(); return; }
+                const pending = lsGet('hv_pending_join');
+                const hid = lsGet('hv_household');
+                if (pending) joinHousehold(pending);
+                else if (hid) subscribeHousehold(hid);
+                else { sync.status = 'nohousehold'; renderSyncUI(); }
+            });
+        }
+
+        function householdRef(hid) { return sync.fb.F.doc(sync.fb.db, 'households', hid); }
+
+        function stopSync() {
+            if (sync.unsub) { sync.unsub(); sync.unsub = null; }
+            clearTimeout(sync.pushTimer);
+            sync.hid = null;
+            sync.members = [];
+        }
+
+        function subscribeHousehold(hid) {
+            stopSync();
+            sync.hid = hid;
+            sync.status = 'connecting';
+            renderSyncUI();
+            sync.unsub = sync.fb.F.onSnapshot(householdRef(hid), { includeMetadataChanges: true }, snap => {
+                if (!snap.exists()) {
+                    sync.status = 'error';
+                    sync.error = 'That shared plan no longer exists.';
+                    lsSet('hv_household', null);
+                    lsSet('hv_pending_join', null);
+                    stopSync();
+                    renderSyncUI();
+                    return;
+                }
+                lsSet('hv_household', hid);
+                lsSet('hv_pending_join', null);
+                const data = snap.data();
+                sync.members = data.members || [];
+                applyRemote(data);
+                sync.status = snap.metadata.hasPendingWrites ? 'saving' : (snap.metadata.fromCache ? 'offline' : 'synced');
+                renderSyncUI();
+            }, err => {
+                const denied = err.code === 'permission-denied';
+                sync.status = 'error';
+                sync.error = denied
+                    ? `${sync.user ? sync.user.email : 'This account'} isn't on that shared plan yet. Ask your partner to invite this exact email, then tap Try again.`
+                    : friendlyFbError(err);
+                stopSync();
+                renderSyncUI();
+            });
+        }
+
+        function mergeKey(k, v) {
+            const d = defaultState();
+            if (k === 'homes') return Array.isArray(v) && v.length === 2 ? v.map((h, i) => Object.assign({}, d.homes[i], h)) : state.homes;
+            const out = Object.assign({}, d[k], v);
+            if (k === 'search' && !Array.isArray(out.areas)) out.areas = defaultAreas();
+            if (k === 'listings') {
+                if (!Array.isArray(out.items)) out.items = [];
+                if (!out.hidden || typeof out.hidden !== 'object') out.hidden = {};
+            }
+            return out;
+        }
+
+        // Remote changes win; local changes made since the last sync get pushed
+        function applyRemote(data) {
+            const base = syncBase();
+            let changed = false, rebuild = false, dirty = false;
+            SYNC_KEYS.forEach(k => {
+                if (!(k in data)) { dirty = true; return; }
+                const r = stable(data[k]), l = stable(state[k]), b = base[k];
+                if (r !== b) {
+                    if (r !== l) {
+                        state[k] = mergeKey(k, data[k]);
+                        changed = true;
+                        if (k === 'homes' || k === 'names' || k === 'search') rebuild = true;
+                    }
+                    base[k] = r;
+                } else if (l !== b) dirty = true;
+            });
+
+            const rs = data.savedHomes || {}, bs = base.saved || {}, ls = {};
+            state.saved.forEach(h => { ls[h.id] = h; });
+            let savedChanged = false;
+            new Set([...Object.keys(rs), ...Object.keys(bs), ...Object.keys(ls)]).forEach(id => {
+                const r = rs[id] ? stable(rs[id]) : undefined, l = ls[id] ? stable(ls[id]) : undefined, b = bs[id];
+                if (r !== b) {
+                    if (r !== l) {
+                        if (r === undefined) delete ls[id]; else ls[id] = rs[id];
+                        savedChanged = true;
+                    }
+                    if (r === undefined) delete bs[id]; else bs[id] = r;
+                } else if (l !== b) dirty = true;
+            });
+            base.saved = bs;
+            setSyncBase(base);
+            if (savedChanged) { state.saved = Object.values(ls); changed = true; }
+
+            if (changed) {
+                persistLocal();
+                if (rebuild) { renderHomes(); renderCriteria(); }
+                bindInputs();
+                renderOutputs();
+            }
+            if (dirty) schedulePush(300);
+        }
+
+        function schedulePush(delay = 800) {
+            if (!sync.hid || !sync.fb || !sync.user) return;
+            clearTimeout(sync.pushTimer);
+            sync.pushTimer = setTimeout(pushNow, delay);
+        }
+
+        async function pushNow() {
+            if (!sync.hid) return;
+            const F = sync.fb.F;
+            const before = syncBase();
+            const base = syncBase();
+            const upd = {};
+            SYNC_KEYS.forEach(k => {
+                const l = stable(state[k]);
+                if (l !== base[k]) { upd[k] = plain(state[k]); base[k] = l; }
+            });
+            const bs = base.saved || {}, ls = {};
+            state.saved.forEach(h => { ls[h.id] = h; });
+            Object.keys(ls).forEach(id => {
+                const l = stable(ls[id]);
+                if (l !== bs[id]) { upd[`savedHomes.${id}`] = plain(ls[id]); bs[id] = l; }
+            });
+            Object.keys(bs).forEach(id => {
+                if (!ls[id]) { upd[`savedHomes.${id}`] = F.deleteField(); delete bs[id]; }
+            });
+            base.saved = bs;
+            if (!Object.keys(upd).length) return;
+            upd.updatedAt = F.serverTimestamp();
+            upd.updatedBy = sync.user ? sync.user.email : '';
+            setSyncBase(base);
+            try {
+                await F.updateDoc(householdRef(sync.hid), upd);
+            } catch (err) {
+                setSyncBase(before); // retry these changes next time
+                sync.status = 'error';
+                sync.error = friendlyFbError(err);
+                renderSyncUI();
+            }
+        }
+
+        async function createHousehold() {
+            if (!sync.user) return;
+            const F = sync.fb.F;
+            const email = sync.user.email.toLowerCase();
+            const ref = F.doc(F.collection(sync.fb.db, 'households'));
+            const savedHomes = {};
+            state.saved.forEach(h => { savedHomes[h.id] = h; });
+            const data = { members: [email], createdBy: email, updatedBy: email, savedHomes };
+            SYNC_KEYS.forEach(k => { data[k] = state[k]; });
+            const payload = plain(data);
+            payload.createdAt = F.serverTimestamp();
+            payload.updatedAt = F.serverTimestamp();
+            sync.status = 'connecting';
+            renderSyncUI();
+            try {
+                await F.setDoc(ref, payload);
+                setSyncBase({});
+                subscribeHousehold(ref.id);
+                showToast('Shared plan created. Now invite your partner.', 'emerald');
+            } catch (err) {
+                sync.status = 'error';
+                sync.error = friendlyFbError(err);
+                renderSyncUI();
+            }
+        }
+
+        function joinHousehold(hid) {
+            hid = String(hid || '').trim();
+            if (!hid) return showToast('Enter the plan code', 'rose');
+            lsSet('hv_pending_join', hid);
+            setSyncBase({}); // the shared plan wins; homes saved only on this phone get added to it
+            subscribeHousehold(hid);
+        }
+
+        function retrySync() {
+            const pending = lsGet('hv_pending_join');
+            const hid = lsGet('hv_household');
+            if (!sync.fb) return initSync();
+            if (!sync.user) { sync.status = 'signedout'; return renderSyncUI(); }
+            if (pending) joinHousehold(pending);
+            else if (hid) subscribeHousehold(hid);
+            else { sync.status = 'nohousehold'; renderSyncUI(); }
+        }
+
+        function inviteLink() {
+            const u = new URL('home_vault.html', location.href);
+            u.searchParams.set('join', sync.hid);
+            if (!FIREBASE_CONFIG) u.searchParams.set('fb', btoa(JSON.stringify(firebaseConfig())).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+            return u.toString();
+        }
+
+        async function inviteMember() {
+            const input = document.getElementById('invite-email');
+            const email = (input.value || '').trim().toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast(`Enter ${nameOf('b')}'s email`, 'rose');
+            try {
+                await sync.fb.F.updateDoc(householdRef(sync.hid), { members: sync.fb.F.arrayUnion(email) });
+                input.value = '';
+                shareInvite(email);
+            } catch (err) {
+                showToast(friendlyFbError(err), 'rose');
+            }
+        }
+
+        async function shareInvite(email) {
+            const link = inviteLink();
+            const text = `Join our Home Vault plan. Open this link on your phone, then create an account with ${email || 'the email I invited'}.`;
+            if (navigator.share) {
+                try { await navigator.share({ title: 'Home Vault invite', text, url: link }); return; }
+                catch (e) { if (e.name === 'AbortError') return; }
+            }
+            try {
+                await navigator.clipboard.writeText(`${text} ${link}`);
+                showToast('Invite link copied. Text it to your partner.', 'emerald');
+            } catch (e) {
+                prompt('Copy this invite link:', link);
+            }
+        }
+
+        function friendlyFbError(err) {
+            const code = (err && err.code) || '';
+            return ({
+                'auth/invalid-credential': 'Wrong email or password.',
+                'auth/invalid-login-credentials': 'Wrong email or password.',
+                'auth/wrong-password': 'Wrong email or password.',
+                'auth/user-not-found': 'No account with that email yet. Tap Create account.',
+                'auth/email-already-in-use': 'That email already has an account. Tap Sign in.',
+                'auth/weak-password': 'Use at least 6 characters for the password.',
+                'auth/invalid-email': 'That email address looks off.',
+                'auth/too-many-requests': 'Too many tries. Wait a minute and try again.',
+                'auth/operation-not-allowed': 'Email/Password sign-in is off. Turn it on in Firebase → Authentication → Sign-in method.',
+                'auth/unauthorized-domain': 'Add thorpetech.org in Firebase → Authentication → Settings → Authorized domains.',
+                'auth/network-request-failed': "No connection. Try again when you're online.",
+                'permission-denied': 'Firebase blocked that. Make sure the Firestore rules from the setup steps are published.',
+                'unavailable': "Can't reach Firebase right now. Changes will sync when you're back online."
+            })[code] || (err && err.message) || 'Something went wrong.';
+        }
+
+        async function syncAuth(mode) {
+            const email = (document.getElementById('sync-email').value || '').trim().toLowerCase();
+            const pw = document.getElementById('sync-password').value || '';
+            if (!email) return showToast('Enter your email', 'rose');
+            const { A, auth } = sync.fb;
+            try {
+                if (mode === 'reset') {
+                    await A.sendPasswordResetEmail(auth, email);
+                    return showToast('Password reset email sent', 'emerald');
+                }
+                if (pw.length < 6) return showToast('Password needs at least 6 characters', 'rose');
+                if (mode === 'create') await A.createUserWithEmailAndPassword(auth, email, pw);
+                else await A.signInWithEmailAndPassword(auth, email, pw);
+                showToast(`Signed in as ${email}`, 'emerald');
+            } catch (err) {
+                showToast(friendlyFbError(err), 'rose');
+            }
+        }
+
+        async function syncSignOut() {
+            if (!confirm('Sign out of sync on this phone? Your plan stays here; it just stops syncing.')) return;
+            stopSync();
+            lsSet('hv_household', null);
+            lsSet('hv_pending_join', null);
+            setSyncBase({});
+            await sync.fb.A.signOut(sync.fb.auth);
+        }
+
+        function saveFirebaseConfig() {
+            const cfg = parseFirebaseConfig(document.getElementById('fb-config').value);
+            if (!cfg) return showToast('That doesn\'t look like a Firebase config. Copy the whole firebaseConfig block.', 'rose');
+            lsSet('hv_firebase_config', JSON.stringify(cfg));
+            showToast(`Connected to Firebase project ${cfg.projectId}`, 'emerald');
+            if (sync.fb) location.reload(); else initSync();
+        }
+
+        async function forgetFirebaseConfig() {
+            if (!confirm('Disconnect this phone from that Firebase project? Your plan stays on this phone.')) return;
+            if (sync.fb && sync.user) { try { await sync.fb.A.signOut(sync.fb.auth); } catch (e) {} }
+            ['hv_firebase_config', 'hv_household', 'hv_pending_join', 'hv_sync_base'].forEach(k => lsSet(k, null));
+            location.reload();
+        }
+
+        async function copyRules() {
+            try { await navigator.clipboard.writeText(FIRESTORE_RULES); showToast('Rules copied', 'emerald'); }
+            catch (e) { prompt('Copy these rules:', FIRESTORE_RULES); }
+        }
+
+        const SYNC_LOOK = {
+            off: ['fa-cloud', 'text-slate-600', 'Off'],
+            loading: ['fa-cloud', 'text-slate-400', 'Connecting'],
+            signedout: ['fa-cloud', 'text-amber-400', 'Signed out'],
+            nohousehold: ['fa-cloud', 'text-amber-400', 'Not shared yet'],
+            connecting: ['fa-cloud-arrow-down', 'text-sky-400', 'Connecting'],
+            saving: ['fa-cloud-arrow-up', 'text-sky-400', 'Saving'],
+            synced: ['fa-cloud', 'text-emerald-400', 'Synced'],
+            offline: ['fa-cloud', 'text-slate-400', 'Offline, will sync'],
+            error: ['fa-triangle-exclamation', 'text-rose-400', 'Needs attention']
+        };
+
+        function renderSyncUI() {
+            const [icon, tone, label] = SYNC_LOOK[sync.status] || SYNC_LOOK.off;
+            document.getElementById('sync-icon').className = `fa-solid ${icon}`;
+            const btn = document.getElementById('sync-btn');
+            btn.className = `h-9 w-9 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition flex items-center justify-center ${tone}`;
+            btn.title = `Sync: ${label}`;
+            const pill = document.getElementById('sync-pill');
+            pill.className = `text-[10px] font-bold ${tone}`;
+            pill.textContent = label;
+
+            // Only rebuild the panel when what it shows changes, so typing isn't interrupted
+            const connected = ['synced', 'saving', 'offline'].includes(sync.status);
+            const view = [connected ? 'connected' : sync.status, sync.user ? sync.user.email : '', sync.members.join(','), sync.error, sync.hid].join('|');
+            if (view === sync.view) return;
+            sync.view = view;
+
+            const body = document.getElementById('sync-body');
+            const btnPrimary = 'py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-extrabold rounded-xl transition';
+            const btnSecondary = 'py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition';
+            const link = 'text-[11px] font-semibold text-slate-500 hover:text-slate-300';
+            const pending = lsGet('hv_pending_join');
+
+            if (sync.status === 'off') {
+                body.innerHTML = `
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Keeps both phones on the same plan, saved homes, ratings, and listings, using a free Firebase project you own. One-time setup, about 10 minutes on a computer:</p>
+                    <ol class="list-decimal pl-4 text-[11px] text-slate-400 space-y-1.5 leading-relaxed">
+                        <li>Open <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="text-sky-400 underline">console.firebase.google.com</a> &rarr; <b class="text-slate-200">Create a project</b> (call it home-vault; Analytics off).</li>
+                        <li><b class="text-slate-200">Build &rarr; Authentication</b> &rarr; Get started &rarr; <b class="text-slate-200">Email/Password</b> &rarr; Enable &rarr; Save.</li>
+                        <li>Authentication &rarr; <b class="text-slate-200">Settings &rarr; Authorized domains</b> &rarr; Add domain &rarr; <b class="text-slate-200">thorpetech.org</b>.</li>
+                        <li><b class="text-slate-200">Build &rarr; Firestore Database</b> &rarr; Create database &rarr; a US location &rarr; <b class="text-slate-200">production mode</b>.</li>
+                        <li>Firestore &rarr; <b class="text-slate-200">Rules</b> &rarr; replace everything with the rules below &rarr; Publish.</li>
+                        <li><b class="text-slate-200">Project settings</b> (gear) &rarr; Your apps &rarr; <b class="text-slate-200">Web &lt;/&gt;</b> &rarr; register "Home Vault" &rarr; copy the <b class="text-slate-200">firebaseConfig</b> block and paste it below.</li>
+                    </ol>
+                    <div class="relative">
+                        <pre class="text-[10px] leading-relaxed text-slate-300 bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto">${esc(FIRESTORE_RULES)}</pre>
+                        <button onclick="copyRules()" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-[10px] font-bold text-slate-200">Copy</button>
+                    </div>
+                    <textarea id="fb-config" class="field font-mono" rows="5" placeholder="const firebaseConfig = { apiKey: &quot;...&quot;, authDomain: &quot;...&quot;, projectId: &quot;...&quot;, ... };"></textarea>
+                    <button onclick="saveFirebaseConfig()" class="w-full ${btnPrimary}"><i class="fa-solid fa-plug mr-1"></i>Connect Firebase</button>
+                    <p class="text-[10px] text-slate-600 leading-relaxed">The config isn't secret. Your sign-in and the rules above keep the plan private to the two of you.</p>`;
+            } else if (sync.status === 'loading' || sync.status === 'connecting') {
+                body.innerHTML = `<p class="text-xs text-slate-400"><i class="fa-solid fa-spinner animate-spin mr-1.5"></i>Connecting to your shared plan...</p>`;
+            } else if (sync.status === 'signedout') {
+                body.innerHTML = `
+                    ${pending ? `<p class="text-[11px] text-sky-200 bg-sky-500/10 border border-sky-500/25 rounded-xl p-2.5 leading-relaxed">You're joining a shared plan. Sign in, or create an account with the email you were invited with.</p>` : `<p class="text-[11px] text-slate-400 leading-relaxed">Sign in on each phone. First time? Tap Create account.</p>`}
+                    <input id="sync-email" class="field" type="email" autocomplete="email" inputmode="email" placeholder="Email">
+                    <input id="sync-password" class="field" type="password" autocomplete="current-password" placeholder="Password (6+ characters)">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="syncAuth('signin')" class="${btnPrimary}">Sign in</button>
+                        <button onclick="syncAuth('create')" class="${btnSecondary}">Create account</button>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <button onclick="syncAuth('reset')" class="${link}">Forgot password</button>
+                        ${FIREBASE_CONFIG ? '' : `<button onclick="forgetFirebaseConfig()" class="${link}">Use a different Firebase project</button>`}
+                    </div>`;
+            } else if (sync.status === 'nohousehold') {
+                body.innerHTML = `
+                    <p class="text-[11px] text-slate-400">Signed in as <span class="text-slate-200 font-semibold">${esc(sync.user.email)}</span></p>
+                    <button onclick="createHousehold()" class="w-full ${btnPrimary}"><i class="fa-solid fa-people-roof mr-1"></i>Start our shared plan</button>
+                    <p class="text-[10px] text-slate-600 -mt-1">Uploads this phone's plan. Do this on one phone, then invite your partner.</p>
+                    <div class="flex gap-2">
+                        <input id="join-code" class="field flex-1" type="text" placeholder="Or paste a plan code" autocomplete="off">
+                        <button onclick="joinHousehold(document.getElementById('join-code').value)" class="px-4 ${btnSecondary}">Join</button>
+                    </div>
+                    <button onclick="syncSignOut()" class="${link}">Sign out</button>`;
+            } else if (connected) {
+                const others = sync.members.filter(m => !sync.user || m !== sync.user.email.toLowerCase());
+                body.innerHTML = `
+                    <div class="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                        <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5"></i>
+                        <div class="min-w-0 text-[11px] text-slate-300 leading-relaxed">
+                            Signed in as <span class="font-semibold text-white">${esc(sync.user.email)}</span><br>
+                            ${others.length ? `Shared with <span class="font-semibold text-white">${others.map(esc).join(', ')}</span>` : 'Only you so far'}
+                        </div>
+                    </div>
+                    ${others.length ? '' : `<p class="text-[11px] text-slate-400">Invite ${esc(nameOf('b'))}. Home Vault sends a link; she opens it on her phone and creates an account with this email.</p>`}
+                    <div class="flex gap-2">
+                        <input id="invite-email" class="field flex-1" type="email" inputmode="email" placeholder="${esc(nameOf('b'))}'s email">
+                        <button onclick="inviteMember()" class="px-4 ${btnPrimary}">Invite</button>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        ${others.length ? `<button onclick="shareInvite()" class="${link}">Resend invite link</button>` : '<span></span>'}
+                        <button onclick="syncSignOut()" class="${link}">Sign out</button>
+                    </div>
+                    <p class="text-[10px] text-slate-600">Plan code: <span class="font-mono select-all">${esc(sync.hid)}</span>. Chat with Big Jim and AI keys stay on each phone.</p>`;
+            } else if (sync.status === 'error') {
+                body.innerHTML = `
+                    <p class="text-[11px] text-rose-200 bg-rose-500/10 border border-rose-500/25 rounded-xl p-2.5 leading-relaxed"><i class="fa-solid fa-circle-exclamation text-rose-400 mr-1"></i>${esc(sync.error)}</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="retrySync()" class="${btnPrimary}">Try again</button>
+                        ${sync.user ? `<button onclick="syncSignOut()" class="${btnSecondary}">Sign out</button>` : (FIREBASE_CONFIG ? '' : `<button onclick="forgetFirebaseConfig()" class="${btnSecondary}">Change project</button>`)}
+                    </div>`;
+            }
         }
 
         // ═══════════ UI PLUMBING ═══════════
@@ -1975,6 +2804,7 @@ ${JSON.stringify(snapshot())}`;
             renderEquity(t);
             renderBuy(t);
             renderSearch();
+            renderListings();
             renderJim();
             document.getElementById('header-sub').textContent = `${nameOf('a')} & ${nameOf('b')}'s move planner`;
         }
@@ -2040,6 +2870,24 @@ ${JSON.stringify(snapshot())}`;
         // Android share target: Zillow/Redfin app → Share → Home Vault
         function handleSharedLink() {
             const params = new URLSearchParams(location.search);
+            const join = params.get('join');
+            if (join) {
+                const fbp = params.get('fb');
+                if (fbp && !FIREBASE_CONFIG) {
+                    try {
+                        const cfg = JSON.parse(atob(fbp.replace(/-/g, '+').replace(/_/g, '/')));
+                        const current = firebaseConfig();
+                        if (cfg.apiKey && cfg.projectId && (current && current.projectId === cfg.projectId ||
+                            confirm(`Join the shared Home Vault plan? It syncs through the Firebase project "${cfg.projectId}". Only accept invites from your partner.`))) {
+                            lsSet('hv_firebase_config', JSON.stringify(cfg));
+                        }
+                    } catch (e) {}
+                }
+                if (firebaseConfig()) lsSet('hv_pending_join', join);
+                history.replaceState(null, '', location.pathname);
+                setTimeout(() => openSettings('sync-section'), 300);
+                return;
+            }
             const shared = [params.get('url'), params.get('text'), params.get('title')].filter(Boolean).join(' ');
             if (!shared) return;
             const link = (shared.match(/https?:\/\/\S+/) || [])[0];
@@ -2055,6 +2903,7 @@ ${JSON.stringify(snapshot())}`;
         try { startTab = localStorage.getItem('hv_tab') || 'equity'; } catch (e) {}
         switchTab(['equity', 'buy', 'homes', 'jim'].includes(startTab) ? startTab : 'equity');
         handleSharedLink();
+        initSync();
     </script>
 </body>
 </html>

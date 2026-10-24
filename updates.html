@@ -106,6 +106,7 @@
         <div id="filter-bar" class="flex flex-wrap justify-center gap-2 mb-10">
             <button data-filter="all" onclick="setUpdatesFilter('all')" class="filter-pill active px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400">All Updates</button>
             <button data-filter="portal" onclick="setUpdatesFilter('portal')" class="filter-pill px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400"><i class="fa-solid fa-house-laptop mr-1"></i> Portal</button>
+            <button data-filter="home" onclick="setUpdatesFilter('home')" class="filter-pill px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400"><i class="fa-solid fa-house-chimney mr-1"></i> Home Vault</button>
             <button data-filter="wealth" onclick="setUpdatesFilter('wealth')" class="filter-pill px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400"><i class="fa-solid fa-chart-line mr-1"></i> Wealth Vault</button>
             <button data-filter="vehicle" onclick="setUpdatesFilter('vehicle')" class="filter-pill px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400"><i class="fa-solid fa-car mr-1"></i> Vehicle Vault</button>
             <button data-filter="asset" onclick="setUpdatesFilter('asset')" class="filter-pill px-3 py-1.5 rounded-full text-[11px] font-bold border border-slate-800 bg-slate-900 text-slate-400"><i class="fa-solid fa-box-open mr-1"></i> Asset Vault</button>
@@ -117,13 +118,28 @@
         <div class="glass-card border border-slate-900/80 rounded-2xl p-6 md:p-8">
             <div id="updates-timeline" class="space-y-7 relative border-l-2 border-slate-800 ml-3 pl-6">
 
+                <!-- Oct 2026 -->
+                <div class="update-entry relative" data-app="home">
+                    <span class="absolute -left-[31px] top-1 bg-sky-500 ring-4 ring-slate-950 h-3 w-3 rounded-full animate-pulse"></span>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/25"><i class="fa-solid fa-house-chimney mr-1"></i>Home Vault</span>
+                            <span class="font-bold text-sky-300 text-xs">v1.0.0 — Home Vault Launched (Latest)</span>
+                        </div>
+                        <span class="text-[9px] text-slate-500 font-mono">October 2026</span>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Launched <strong>Home Vault</strong>, a phone-first home-buying planner you can install on iPhone or Android. It includes an equity calculator for two current homes (sell, keep, or rent, with Michigan transfer tax and selling costs), a mortgage and affordability calculator with an equity growth chart, one-tap Zillow and Redfin searches with your must-haves pre-filtered, a saved-homes shortlist with ratings from both buyers, and <strong>Big Jim</strong> the rock hyrax as an in-app consultant (built-in playbook, or AI with your own Gemini key).
+                    </p>
+                </div>
+
                 <!-- Jul 2026 -->
                 <div class="update-entry relative" data-app="wealth">
-                    <span class="absolute -left-[31px] top-1 bg-violet-500 ring-4 ring-slate-950 h-3 w-3 rounded-full animate-pulse"></span>
+                    <span class="absolute -left-[31px] top-1 bg-violet-500 ring-4 ring-slate-950 h-3 w-3 rounded-full"></span>
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
                         <div class="flex items-center gap-2">
                             <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/25"><i class="fa-solid fa-chart-line mr-1"></i>Wealth Vault</span>
-                            <span class="font-bold text-violet-300 text-xs">v1.2.0 — Statement Import (Latest)</span>
+                            <span class="font-bold text-violet-300 text-xs">v1.2.0 — Statement Import</span>
                         </div>
                         <span class="text-[9px] text-slate-500 font-mono">July 2026</span>
                     </div>

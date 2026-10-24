@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Home Vault</title>
+    <meta name="description" content="Corey & Lauren's home-buying planner: equity calculator, mortgage math, Zillow/Redfin search, and Big Jim the hyrax consultant.">
+    <!-- Installable app (Android + iPhone) -->
+    <link rel="manifest" href="home_vault.webmanifest">
+    <meta name="theme-color" content="#030712">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Home Vault">
+    <link rel="apple-touch-icon" href="home_vault_apple_touch.png">
+    <link rel="icon" type="image/png" href="home_vault_icon_192.png">
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BG8QPL6TX6"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-BG8QPL6TX6');
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            color-scheme: dark;
+            /* Chart series (validated for CVD separation + contrast on the dark surface) */
+            --series-a: #3987e5;   /* Corey's house */
+            --series-b: #d95926;   /* Lauren's house */
+            --series-c: #199e70;   /* Savings */
+            --series-new: #9085e9; /* New home equity */
+            --grid: rgba(148, 163, 184, 0.12);
+            --axis-text: #94a3b8;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #030712;
+            padding-bottom: calc(76px + env(safe-area-inset-bottom));
+        }
+
+        .mesh-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(circle at 10% 15%, rgba(14, 165, 233, 0.07) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 85%, rgba(16, 185, 129, 0.06) 0%, transparent 40%);
+        }
+
+        .glass-card {
+            background: rgba(17, 24, 39, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .app-header {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .bottom-nav {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        .field {
+            width: 100%;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            font-size: 16px; /* prevents iOS zoom on focus */
+            color: #f1f5f9;
+        }
+        .field:focus { outline: none; border-color: #0ea5e9; }
+        .field::placeholder { color: #475569; }
+
+        .field-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 0.3rem;
+        }
+
+        input[type=range] { accent-color: #0ea5e9; width: 100%; }
+
+        .seg { display: flex; background: #020617; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 3px; gap: 3px; }
+        .seg button { flex: 1; padding: 0.45rem 0.25rem; font-size: 12px; font-weight: 700; border-radius: 0.55rem; color: #94a3b8; transition: all .15s; }
+        .seg button.active { background: #0ea5e9; color: #020617; }
+
+        .tab-btn.active { color: #38bdf8; }
+        .tab-btn.active .tab-dot { opacity: 1; }
+
+        .chat-bubble p + p { margin-top: 0.5rem; }
+        .chat-bubble ul { list-style: disc; padding-left: 1.1rem; margin: 0.35rem 0; }
+
+        #chart-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 0.6rem;
+            padding: 0.4rem 0.6rem;
+            font-size: 11px;
+            color: #e2e8f0;
+            white-space: nowrap;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transform: translate(-50%, -110%);
+            z-index: 5;
+        }
+
+        .stack-seg { transition: filter .15s; }
+        .stack-seg:hover { filter: brightness(1.15); }
+
+        .fade-in { animation: fadeIn .2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen relative">
+    <div class="mesh-bg"></div>
+
+    <!-- ═══════════ HEADER ═══════════ -->
+    <header class="app-header sticky top-0 z-30 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md">
+        <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <a href="index.html" class="flex items-center gap-2.5 min-w-0">
+                <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-sky-500/20 flex-shrink-0">
+                    <i class="fa-solid fa-house-chimney text-slate-950 text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-base font-extrabold text-white leading-tight">Home Vault</h1>
+                    <p id="header-sub" class="text-[10px] text-slate-500 font-semibold truncate">Move planner</p>
+                </div>
+            </a>
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('install-modal')" id="install-btn" class="hidden h-9 px-3 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-xl text-xs font-bold transition items-center gap-1.5">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Install
+                </button>
+                <button onclick="openSettings()" class="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-xl transition flex items-center justify-center relative" title="Settings" aria-label="Settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span id="ai-dot" class="hidden absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 border-2 border-slate-950"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 py-4 space-y-4">
+
+        <!-- ═══════════ PANEL: EQUITY ═══════════ -->
+        <section id="panel-equity" class="space-y-4">
+
+            <!-- Hero: cash available for the next house -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 shadow-xl">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Cash for the next house</p>
+                        <p id="hero-cash" class="text-4xl font-extrabold text-white mt-1 tabular-nums">$0</p>
+                        <p id="hero-cash-sub" class="text-xs text-slate-400 mt-1"></p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equity today</p>
+                        <p id="hero-equity-now" class="text-lg font-extrabold text-slate-200 tabular-nums">$0</p>
+                    </div>
+                </div>
+
+                <!-- Sources stacked bar -->
+                <div class="mt-4">
+                    <div id="sources-bar" class="flex h-3.5 w-full gap-[2px] rounded-full overflow-hidden bg-slate-900" role="img" aria-label="Where the cash comes from"></div>
+                    <div id="sources-legend" class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
+                </div>
+
+                <div id="balance-warning" class="hidden mt-4 flex items-start gap-2.5 p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+                    <p class="text-xs text-amber-200 leading-relaxed"><strong>Add your mortgage payoff balances below.</strong> Until you do, Home Vault assumes a house is paid off, so the numbers above are a best case.</p>
+                </div>
+            </div>
+
+            <!-- Timeline & assumptions -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-4">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-calendar-days text-sky-400"></i> Timeline &amp; assumptions</h2>
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <label class="field-label" for="months-range">Buying in</label>
+                        <span id="months-label" class="text-xs font-bold text-sky-300"></span>
+                    </div>
+                    <input id="months-range" type="range" min="0" max="36" step="1" data-bind="plan.monthsToPurchase" data-num>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Home value growth / yr</label>
+                        <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.1" data-bind="plan.appreciation" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Savings toward the move</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="$0" data-bind="plan.savings" data-num>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="field-label">Cash to keep in reserve (not spent on the house)</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="$0" data-bind="plan.reserve" data-num>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current homes (rendered) -->
+            <div id="homes-container" class="space-y-4"></div>
+
+            <p class="text-[10px] text-slate-600 leading-relaxed px-1">
+                Starting values are Zillow Zestimates pulled on Oct 24, 2026. A Zestimate is Zillow's estimate of market value, not an appraisal. Michigan transfer tax is $8.60 per $1,000 (state 0.75% + county 0.11%). All figures are estimates for planning, not financial, tax, or legal advice.
+            </p>
+        </section>
+
+        <!-- ═══════════ PANEL: BUY ═══════════ -->
+        <section id="panel-buy" class="space-y-4 hidden">
+
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <label class="field-label" for="price-input">Target home price</label>
+                        <span class="text-[10px] text-slate-500 font-semibold">Drag or type</span>
+                    </div>
+                    <input id="price-input" class="field text-2xl font-extrabold tabular-nums" type="number" inputmode="decimal" step="1000" data-bind="buy.price" data-num>
+                    <input id="price-range" class="mt-3" type="range" min="100000" max="800000" step="5000" data-bind="buy.price" data-num>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5">
+                        <p class="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Monthly payment</p>
+                        <p id="buy-monthly" class="text-2xl font-extrabold text-white tabular-nums mt-0.5">$0</p>
+                        <p class="text-[10px] text-slate-500">principal, interest, tax, insurance</p>
+                    </div>
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5">
+                        <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Equity on day one</p>
+                        <p id="buy-equity-day1" class="text-2xl font-extrabold text-white tabular-nums mt-0.5">$0</p>
+                        <p id="buy-equity-day1-sub" class="text-[10px] text-slate-500"></p>
+                    </div>
+                </div>
+
+                <div id="buy-breakdown" class="space-y-1.5"></div>
+                <div id="buy-alerts" class="space-y-2"></div>
+            </div>
+
+            <!-- Down payment -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-piggy-bank text-emerald-400"></i> Down payment</h2>
+                <div class="seg" id="down-mode-seg">
+                    <button data-mode="20">20% down</button>
+                    <button data-mode="all">Use it all</button>
+                    <button data-mode="custom">Custom</button>
+                </div>
+                <div id="down-custom-wrap" class="hidden">
+                    <label class="field-label">Custom down payment</label>
+                    <input class="field" type="number" inputmode="decimal" data-bind="buy.downCustom" data-num>
+                </div>
+                <div id="down-summary" class="grid grid-cols-2 gap-2 text-xs"></div>
+            </div>
+
+            <!-- Loan settings -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sliders text-sky-400"></i> Loan settings</h2>
+                <div class="seg" id="term-seg">
+                    <button data-term="15">15 yr</button>
+                    <button data-term="20">20 yr</button>
+                    <button data-term="30">30 yr</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Interest rate</label>
+                        <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.125" data-bind="buy.rate" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Property tax / yr</label>
+                        <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.05" data-bind="buy.taxRate" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Insurance / yr</label>
+                        <input class="field" type="number" inputmode="decimal" data-bind="buy.insuranceYr" data-num>
+                    </div>
+                    <div>
+                        <label class="field-label">HOA / mo</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="$0" data-bind="buy.hoaMo" data-num>
+                    </div>
+                    <div>
+                        <label class="field-label">PMI rate / yr</label>
+                        <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.05" data-bind="buy.pmiRate" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Buyer closing costs</label>
+                        <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.25" data-bind="buy.closingPct" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-600 leading-relaxed">Michigan resets ("uncaps") a home's taxable value when it sells, so plan on taxes from the price you pay, not the seller's current bill. 1.4% is a starting point for a homestead in Kalamazoo/Calhoun County. Check the city's millage rate for a specific house.</p>
+            </div>
+
+            <!-- Affordability -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-scale-balanced text-violet-400"></i> How much house?</h2>
+                <p class="text-[11px] text-slate-500 -mt-1">Optional. Used for the price ceilings and Big Jim's advice. Stays on this phone.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="field-label">Combined gross income / yr</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="e.g. 120000" data-bind="afford.income" data-num>
+                    </div>
+                    <div>
+                        <label class="field-label">Other debts / mo</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="car, loans" data-bind="afford.debts" data-num>
+                    </div>
+                    <div>
+                        <label class="field-label">Max comfy payment</label>
+                        <input class="field" type="number" inputmode="decimal" placeholder="$ / mo" data-bind="afford.budget" data-num>
+                    </div>
+                </div>
+                <div id="afford-results" class="space-y-2"></div>
+            </div>
+
+            <!-- New home equity chart -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-chart-column" style="color: var(--series-new)"></i> Equity in the new home</h2>
+                        <p id="equity-chart-sub" class="text-[11px] text-slate-500 mt-0.5"></p>
+                    </div>
+                    <div class="w-24 flex-shrink-0">
+                        <label class="field-label">Growth / yr</label>
+                        <div class="relative"><input class="field pr-7 py-1.5" type="number" inputmode="decimal" step="0.5" data-bind="buy.appreciation" data-num><span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                    </div>
+                </div>
+                <div id="equity-chart" class="relative mt-3"></div>
+                <details class="mt-2 group">
+                    <summary class="text-[11px] text-slate-500 font-semibold cursor-pointer select-none hover:text-slate-300">Show as table</summary>
+                    <div id="equity-table" class="mt-2 overflow-x-auto"></div>
+                </details>
+            </div>
+        </section>
+
+        <!-- ═══════════ PANEL: HOMES ═══════════ -->
+        <section id="panel-homes" class="space-y-4 hidden">
+
+            <!-- Must-haves -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-4">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-list-check text-sky-400"></i> Must-haves</h2>
+                <div class="grid grid-cols-3 gap-2" id="criteria-steppers"></div>
+                <div>
+                    <label class="field-label">Max price in searches</label>
+                    <div class="seg" id="maxprice-seg">
+                        <button data-mp="target">Target +10%</button>
+                        <button data-mp="custom">Custom</button>
+                        <button data-mp="none">No max</button>
+                    </div>
+                    <div id="maxprice-custom-wrap" class="hidden mt-2">
+                        <input class="field" type="number" inputmode="decimal" step="5000" data-bind="search.maxPrice" data-num>
+                    </div>
+                    <p id="maxprice-note" class="text-[11px] text-slate-500 mt-1.5"></p>
+                </div>
+            </div>
+
+            <!-- Search areas -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-emerald-400"></i> Search areas</h2>
+                    <button onclick="openAreaModal()" class="text-xs font-bold text-sky-400 hover:text-sky-300"><i class="fa-solid fa-plus mr-1"></i>Add area</button>
+                </div>
+                <p class="text-[11px] text-slate-500 -mt-1">Each button opens Zillow or Redfin with your must-haves already filtered. On a phone with the app installed, it opens in the app.</p>
+                <div id="areas-list" class="space-y-2"></div>
+            </div>
+
+            <!-- Saved homes -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-heart text-rose-400"></i> Saved homes <span id="saved-count" class="text-[10px] font-bold text-slate-500"></span></h2>
+                    <button id="add-home-btn" onclick="openHomeModal()" class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-extrabold rounded-xl transition"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                </div>
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar" id="saved-sort"></div>
+                <div id="saved-list" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <!-- ═══════════ PANEL: BIG JIM ═══════════ -->
+        <section id="panel-jim" class="space-y-4 hidden">
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 shadow-xl">
+                <div class="flex items-center gap-4">
+                    <img src="big_jim_avatar.jpg" alt="Big Jim the rock hyrax" class="h-20 w-20 rounded-2xl object-cover border border-slate-700 shadow-lg flex-shrink-0">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-extrabold text-white">Big Jim</h2>
+                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Rock Hyrax &middot; Home-Buying Consultant</p>
+                        <p class="text-xs text-slate-400 mt-1.5 leading-snug">"Nothing gets bought without a thorough sniff test."</p>
+                        <p id="jim-status" class="text-[10px] mt-1.5 font-semibold"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sniff test -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-magnifying-glass text-amber-400"></i> Big Jim's sniff test</h2>
+                <p class="text-[11px] text-slate-500 -mt-1">Live checks on your plan. They update as you change numbers.</p>
+                <div id="jim-tips" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Chat -->
+            <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-comments text-sky-400"></i> Ask Big Jim</h2>
+                    <button onclick="clearChat()" class="text-[11px] font-semibold text-slate-500 hover:text-slate-300">Clear</button>
+                </div>
+                <div id="chat-list" class="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1"></div>
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1" id="chat-chips"></div>
+                <form onsubmit="sendChat(event)" class="flex gap-2">
+                    <input id="chat-input" class="field flex-1" type="text" placeholder="Ask about equity, offers, timing..." autocomplete="off">
+                    <button id="chat-send" type="submit" class="px-4 bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold rounded-xl transition flex items-center justify-center" aria-label="Send">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+                <p class="text-[10px] text-slate-600 leading-relaxed">Big Jim is a hyrax, not a licensed realtor, lender, or attorney. With an AI key (Settings), he reads your live numbers and answers anything. Without one, he answers from the built-in playbook.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══════════ BOTTOM NAV ═══════════ -->
+    <nav class="bottom-nav fixed bottom-0 inset-x-0 z-30 border-t border-slate-900 bg-slate-950/90 backdrop-blur-md">
+        <div class="max-w-2xl mx-auto grid grid-cols-4">
+            <button class="tab-btn py-2.5 flex flex-col items-center gap-0.5 text-slate-500 transition" data-tab="equity">
+                <i class="fa-solid fa-sack-dollar text-lg"></i><span class="text-[10px] font-bold">Equity</span>
+            </button>
+            <button class="tab-btn py-2.5 flex flex-col items-center gap-0.5 text-slate-500 transition" data-tab="buy">
+                <i class="fa-solid fa-calculator text-lg"></i><span class="text-[10px] font-bold">Buy</span>
+            </button>
+            <button class="tab-btn py-2.5 flex flex-col items-center gap-0.5 text-slate-500 transition" data-tab="homes">
+                <i class="fa-solid fa-magnifying-glass-location text-lg"></i><span class="text-[10px] font-bold">Homes</span>
+            </button>
+            <button class="tab-btn py-2.5 flex flex-col items-center gap-0.5 text-slate-500 transition" data-tab="jim">
+                <img src="big_jim_avatar.jpg" alt="" class="h-[22px] w-[22px] rounded-full object-cover border border-slate-700"><span class="text-[10px] font-bold">Big Jim</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ═══════════ MODAL: SAVED HOME ═══════════ -->
+    <div id="home-modal" class="modal hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this) closeModal('home-modal')">
+        <div class="bg-slate-950 border border-slate-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto p-5 space-y-3 fade-in" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between">
+                <h3 id="home-modal-title" class="text-base font-extrabold text-white">Add a home</h3>
+                <button onclick="closeModal('home-modal')" class="h-8 w-8 rounded-lg bg-slate-900 text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input type="hidden" id="hm-id">
+            <div>
+                <label class="field-label">Zillow / Redfin link</label>
+                <input id="hm-url" class="field" type="url" placeholder="Paste or share a listing link" oninput="onHomeUrlInput()">
+                <p class="text-[10px] text-slate-600 mt-1">Tip for Android: once installed, use Share &rarr; Home Vault from the Zillow or Redfin app.</p>
+            </div>
+            <div>
+                <label class="field-label">Address</label>
+                <input id="hm-address" class="field" type="text" placeholder="123 Main St, Portage, MI">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="col-span-2">
+                    <label class="field-label">List price</label>
+                    <input id="hm-price" class="field" type="number" inputmode="decimal" placeholder="$">
+                </div>
+                <div><label class="field-label">Beds</label><input id="hm-beds" class="field" type="number" inputmode="decimal"></div>
+                <div><label class="field-label">Baths</label><input id="hm-baths" class="field" type="number" inputmode="decimal" step="0.5"></div>
+                <div><label class="field-label">Garage spaces</label><input id="hm-garage" class="field" type="number" inputmode="decimal"></div>
+                <div><label class="field-label">Sq ft</label><input id="hm-sqft" class="field" type="number" inputmode="decimal"></div>
+                <div><label class="field-label">Year built</label><input id="hm-year" class="field" type="number" inputmode="numeric"></div>
+                <div><label class="field-label">HOA / mo</label><input id="hm-hoa" class="field" type="number" inputmode="decimal" placeholder="$0"></div>
+            </div>
+            <div>
+                <label class="field-label">Status</label>
+                <div class="seg" id="hm-status-seg">
+                    <button data-status="interested">Interested</button>
+                    <button data-status="toured">Toured</button>
+                    <button data-status="offer">Offer</button>
+                    <button data-status="pass">Pass</button>
+                </div>
+            </div>
+            <div>
+                <label class="field-label">Notes</label>
+                <textarea id="hm-notes" class="field" rows="3" placeholder="Big yard, roof looks old, close to work..."></textarea>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button id="hm-delete" onclick="deleteHome()" class="hidden px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-sm font-bold rounded-xl transition"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="saveHome()" class="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-extrabold rounded-xl transition">Save home</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: AREA ═══════════ -->
+    <div id="area-modal" class="modal hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this) closeModal('area-modal')">
+        <div class="bg-slate-950 border border-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-3 fade-in" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-white">Add a search area</h3>
+                <button onclick="closeModal('area-modal')" class="h-8 w-8 rounded-lg bg-slate-900 text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div>
+                <label class="field-label">City, state</label>
+                <input id="area-name" class="field" type="text" placeholder="Climax, MI">
+            </div>
+            <div>
+                <label class="field-label">ZIP code(s)</label>
+                <input id="area-zips" class="field" type="text" inputmode="numeric" placeholder="49034">
+                <p class="text-[10px] text-slate-600 mt-1">Separate multiple ZIPs with commas. Redfin searches by ZIP.</p>
+            </div>
+            <button onclick="saveArea()" class="w-full py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-extrabold rounded-xl transition">Add area</button>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: INSTALL ═══════════ -->
+    <div id="install-modal" class="modal hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this) closeModal('install-modal')">
+        <div class="bg-slate-950 border border-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 fade-in" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-white">Put Home Vault on your phone</h3>
+                <button onclick="closeModal('install-modal')" class="h-8 w-8 rounded-lg bg-slate-900 text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <button id="install-native-btn" onclick="triggerInstall()" class="hidden w-full py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-extrabold rounded-xl transition"><i class="fa-solid fa-download mr-1.5"></i>Install now</button>
+            <div class="space-y-3 text-xs text-slate-300">
+                <div class="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl">
+                    <p class="font-extrabold text-white mb-1.5"><i class="fa-brands fa-apple mr-1.5"></i>iPhone (Safari)</p>
+                    <ol class="list-decimal pl-4 space-y-1 text-slate-400">
+                        <li>Open <span class="text-slate-200 font-semibold">thorpetech.org/home_vault.html</span> in Safari</li>
+                        <li>Tap the <i class="fa-solid fa-arrow-up-from-bracket"></i> Share button</li>
+                        <li>Tap <span class="text-slate-200 font-semibold">Add to Home Screen</span>, then Add</li>
+                    </ol>
+                </div>
+                <div class="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl">
+                    <p class="font-extrabold text-white mb-1.5"><i class="fa-brands fa-android mr-1.5"></i>Android (Chrome)</p>
+                    <ol class="list-decimal pl-4 space-y-1 text-slate-400">
+                        <li>Open the page in Chrome</li>
+                        <li>Tap <span class="text-slate-200 font-semibold">Install</span> when prompted, or the &#8942; menu &rarr; <span class="text-slate-200 font-semibold">Install app</span></li>
+                    </ol>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">It opens full-screen with its own icon and works offline. Your data stays on each phone. Use Settings &rarr; Share plan to send your numbers to each other.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: SETTINGS ═══════════ -->
+    <div id="settings-modal" class="modal hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this) closeModal('settings-modal')">
+        <div class="bg-slate-950 border border-slate-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-y-auto p-5 space-y-4 fade-in" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-white">Settings</h3>
+                <button onclick="closeModal('settings-modal')" class="h-8 w-8 rounded-lg bg-slate-900 text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <p class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Buyers</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="field-label">Buyer 1</label><input class="field" type="text" data-bind="names.a"></div>
+                    <div><label class="field-label">Buyer 2</label><input class="field" type="text" data-bind="names.b"></div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Big Jim's AI brain</p>
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-[11px] font-bold text-sky-400 hover:text-sky-300">Get a free key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Optional. A free Google Gemini key lets Big Jim answer any question with your real numbers. If you already added one in Wealth Vault on this device, Big Jim uses it automatically.</p>
+                <div>
+                    <label class="field-label">Gemini API key</label>
+                    <input id="set-gemini" class="field" type="password" placeholder="Paste Gemini key" autocomplete="off">
+                </div>
+                <div>
+                    <label class="field-label">OpenRouter API key (backup)</label>
+                    <input id="set-openrouter" class="field" type="password" placeholder="Optional" autocomplete="off">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="testAI()" id="test-ai-btn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-plug mr-1"></i>Test</button>
+                    <button onclick="saveKeys()" class="flex-1 py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-extrabold rounded-xl transition"><i class="fa-solid fa-floppy-disk mr-1"></i>Save keys</button>
+                </div>
+                <p class="text-[10px] text-slate-600">Keys stay in this browser's storage and are only sent to Google or OpenRouter.</p>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <p class="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Share &amp; backup</p>
+                <p class="text-[11px] text-slate-400 leading-relaxed">Your plan lives on this phone only. Send it to each other with Share plan, then open the file with Import on the other phone.</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="sharePlan()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-share-nodes mr-1"></i>Share</button>
+                    <button onclick="exportPlan()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-download mr-1"></i>Export</button>
+                    <label class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition text-center cursor-pointer"><i class="fa-solid fa-upload mr-1"></i>Import<input type="file" accept=".json,application/json" class="hidden" onchange="importPlan(event)"></label>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <button onclick="openModal('install-modal'); closeModal('settings-modal');" class="text-xs font-bold text-sky-400 hover:text-sky-300"><i class="fa-solid fa-mobile-screen-button mr-1"></i>Install on phone</button>
+                <button onclick="resetAll()" class="text-xs font-bold text-rose-400 hover:text-rose-300"><i class="fa-solid fa-rotate-left mr-1"></i>Reset everything</button>
+            </div>
+            <p class="text-[10px] text-slate-600 text-center">Home Vault v1.0.0 &middot; Thorpe Tech &middot; <a href="privacy.html" class="underline">Privacy</a></p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-2xl fade-in" style="bottom: calc(88px + env(safe-area-inset-bottom));"></div>
+
+    <script>
+        // ═══════════ STATE ═══════════
+        const STORE_KEY = 'thorpe_tech_home_vault';
+        const MI_TRANSFER_TAX = 0.0086; // $8.60 per $1,000: state 0.75% + county 0.11%
+
+        function defaultAreas() {
+            return [
+                { name: 'Portage, MI', slug: 'portage-mi', zips: ['49024', '49002', '49081'], on: true },
+                { name: 'Kalamazoo, MI', slug: 'kalamazoo-mi', zips: ['49009', '49008', '49048', '49006', '49001'], on: true },
+                { name: 'Richland, MI', slug: 'richland-mi', zips: ['49083'], on: true },
+                { name: 'Galesburg, MI', slug: 'galesburg-mi', zips: ['49053'], on: true },
+                { name: 'Augusta, MI', slug: 'augusta-mi', zips: ['49012'], on: true },
+                { name: 'Battle Creek, MI', slug: 'battle-creek-mi', zips: ['49015', '49014', '49017'], on: true },
+                { name: 'Marshall, MI', slug: 'marshall-mi', zips: ['49068'], on: true },
+                { name: 'Vicksburg, MI', slug: 'vicksburg-mi', zips: ['49097'], on: false }
+            ];
+        }
+
+        function defaultState() {
+            return {
+                version: 1,
+                names: { a: 'Corey', b: 'Lauren' },
+                plan: { monthsToPurchase: 12, appreciation: 3, savings: 0, reserve: 5000 },
+                homes: [
+                    {
+                        id: 'a', street: '5932 Mount Vernon Ave', cityLine: 'Portage, MI 49024',
+                        value: 189600, low: 176000, high: 203000, asOf: 'Oct 24, 2026',
+                        beds: 2, baths: 1, sqft: 1084, built: 1948,
+                        mortgageBalance: null, rate: null, monthlyPI: null, escrow: null,
+                        plan: 'sell', agentPct: 5.5, closingPct: 1, transferTax: true, repairs: 0, rent: null
+                    },
+                    {
+                        id: 'b', street: '213 N Sycamore St', cityLine: 'Marshall, MI 49068',
+                        value: 176800, low: 159000, high: 193000, asOf: 'Oct 24, 2026',
+                        beds: 2, baths: 2, sqft: 962, built: 1920,
+                        mortgageBalance: null, rate: null, monthlyPI: null, escrow: null,
+                        plan: 'sell', agentPct: 5.5, closingPct: 1, transferTax: true, repairs: 0, rent: null
+                    }
+                ],
+                buy: { price: 350000, rate: 7.0, term: 30, taxRate: 1.4, insuranceYr: 1400, pmiRate: 0.5, hoaMo: 0, closingPct: 3, downMode: '20', downCustom: 70000, appreciation: 3 },
+                afford: { income: null, debts: null, budget: null },
+                search: { minBeds: 3, minBaths: 2, minGarage: 2, maxPriceMode: 'target', maxPrice: 400000, areas: defaultAreas() },
+                saved: [],
+                savedSort: 'added',
+                chat: []
+            };
+        }
+
+        function loadState() {
+            const base = defaultState();
+            try {
+                const raw = localStorage.getItem(STORE_KEY);
+                if (!raw) return base;
+                return mergeState(base, JSON.parse(raw));
+            } catch (e) {
+                console.error('Could not read saved plan:', e);
+                return base;
+            }
+        }
+
+        // Fill in any keys a newer version added, keeping the user's values
+        function mergeState(base, stored) {
+            if (!stored || typeof stored !== 'object') return base;
+            const out = Object.assign({}, base, stored);
+            ['names', 'plan', 'buy', 'afford', 'search'].forEach(k => {
+                out[k] = Object.assign({}, base[k], stored[k] || {});
+            });
+            if (!Array.isArray(out.homes) || out.homes.length !== 2) out.homes = base.homes;
+            out.homes = out.homes.map((h, i) => Object.assign({}, base.homes[i], h));
+            if (!Array.isArray(out.search.areas)) out.search.areas = defaultAreas();
+            if (!Array.isArray(out.saved)) out.saved = [];
+            if (!Array.isArray(out.chat)) out.chat = [];
+            return out;
+        }
+
+        let state = loadState();
+
+        function saveState() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+            catch (e) { console.error('Could not save plan:', e); }
+        }
+
+        // ═══════════ HELPERS ═══════════
+        const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+        function money(n) { return (n == null || isNaN(n)) ? '—' : usd.format(Math.round(n)); }
+        function moneyK(n) {
+            if (n == null || isNaN(n)) return '—';
+            const a = Math.abs(n);
+            if (a >= 1e6) return (n < 0 ? '-' : '') + '$' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+            if (a >= 1e3) return (n < 0 ? '-' : '') + '$' + Math.round(a / 1e3) + 'k';
+            return money(n);
+        }
+        function pct(n, d = 1) { return (n == null || isNaN(n)) ? '—' : n.toFixed(d) + '%'; }
+        function num(v) { return (v == null || v === '' || isNaN(v)) ? 0 : Number(v); }
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj); }
+        function setPath(obj, path, val) {
+            const keys = path.split('.');
+            let o = obj;
+            for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]];
+            o[keys[keys.length - 1]] = val;
+        }
+        function nameOf(id) { return (state.names[id] || (id === 'a' ? 'Buyer 1' : 'Buyer 2')).trim() || (id === 'a' ? 'Buyer 1' : 'Buyer 2'); }
+
+        // ═══════════ MORTGAGE MATH ═══════════
+        function monthlyPI(principal, annualRatePct, years) {
+            if (principal <= 0) return 0;
+            const n = years * 12;
+            const r = num(annualRatePct) / 100 / 12;
+            if (r === 0) return principal / n;
+            return principal * r / (1 - Math.pow(1 + r, -n));
+        }
+
+        // Remaining balance after `months` payments of `payment`. Without a payment we can't
+        // amortize, so the balance is held flat (conservative).
+        function balanceAfter(balance, annualRatePct, payment, months) {
+            balance = num(balance);
+            if (balance <= 0) return 0;
+            if (!payment || payment <= 0) return balance;
+            const r = num(annualRatePct) / 100 / 12;
+            let b = balance;
+            for (let i = 0; i < months; i++) {
+                b = b * (1 + r) - payment;
+                if (b <= 0) return 0;
+            }
+            return b;
+        }
+
+        // ═══════════ CURRENT HOMES ═══════════
+        function projectHome(h) {
+            const months = num(state.plan.monthsToPurchase);
+            const g = num(state.plan.appreciation) / 100;
+            const value = num(h.value);
+            const futureValue = value * Math.pow(1 + g, months / 12);
+            const balanceNow = num(h.mortgageBalance);
+            const balanceAtSale = balanceAfter(balanceNow, h.rate, num(h.monthlyPI), months);
+            const equityNow = value - balanceNow;
+            const equityAtSale = futureValue - balanceAtSale;
+            const agent = futureValue * num(h.agentPct) / 100;
+            const closing = futureValue * num(h.closingPct) / 100;
+            const transfer = h.transferTax ? futureValue * MI_TRANSFER_TAX : 0;
+            const sellingCosts = agent + closing + transfer + num(h.repairs);
+            const netProceeds = equityAtSale - sellingCosts;
+            const rent = num(h.rent);
+            const rentCashFlow = rent - num(h.monthlyPI) - num(h.escrow) - rent * 0.10; // 10% for vacancy + upkeep
+            return {
+                futureValue, balanceNow, balanceAtSale, equityNow, equityAtSale,
+                agent, closing, transfer, sellingCosts, netProceeds, rentCashFlow,
+                principalPaid: balanceNow - balanceAtSale,
+                appreciationGain: futureValue - value,
+                balanceUnknown: h.mortgageBalance == null || h.mortgageBalance === ''
+            };
+        }
+
+        function totals() {
+            const proj = state.homes.map(projectHome);
+            let fromSales = 0, keptEquity = 0;
+            const sources = [];
+            state.homes.forEach((h, i) => {
+                const p = proj[i];
+                if (h.plan === 'sell') {
+                    fromSales += p.netProceeds;
+                    sources.push({ id: h.id, label: `${nameOf(h.id)}'s house`, value: p.netProceeds, color: h.id === 'a' ? 'var(--series-a)' : 'var(--series-b)' });
+                } else {
+                    keptEquity += p.equityAtSale;
+                }
+            });
+            const savings = num(state.plan.savings);
+            if (savings > 0) sources.push({ id: 'sav', label: 'Savings', value: savings, color: 'var(--series-c)' });
+            const available = fromSales + savings;
+            const spendable = available - num(state.plan.reserve);
+            return {
+                proj, fromSales, keptEquity, savings, available, spendable, sources,
+                equityNow: proj.reduce((s, p) => s + p.equityNow, 0),
+                anyUnknown: proj.some(p => p.balanceUnknown)
+            };
+        }
+
+        // ═══════════ NEW HOME ═══════════
+        function buyCalc(price, opts = {}) {
+            const b = state.buy;
+            const t = opts.totals || totals();
+            price = num(price);
+            const closing = price * num(b.closingPct) / 100;
+            const cashForDown = Math.max(0, t.spendable - closing);
+            let down;
+            if (b.downMode === 'custom') down = num(b.downCustom);
+            else if (b.downMode === 'all') down = cashForDown;
+            else down = Math.min(price * 0.20, cashForDown);
+            down = Math.max(0, Math.min(down, price));
+            const loan = price - down;
+            const ltv = price > 0 ? loan / price : 0;
+            const pi = monthlyPI(loan, b.rate, num(b.term) || 30);
+            const tax = price * num(b.taxRate) / 100 / 12;
+            const ins = num(b.insuranceYr) / 12;
+            const pmi = ltv > 0.80 ? loan * num(b.pmiRate) / 100 / 12 : 0;
+            const hoa = opts.hoa != null ? num(opts.hoa) : num(b.hoaMo);
+            const total = pi + tax + ins + pmi + hoa;
+            const cashToClose = down + closing;
+            const leftover = t.spendable - cashToClose;
+            return { price, closing, down, loan, ltv, downPct: price > 0 ? down / price * 100 : 0, pi, tax, ins, pmi, hoa, total, cashToClose, leftover, t };
+        }
+
+        // Monthly housing budget implied by income (28% front-end / 36% back-end) and/or the user's comfy number
+        function housingBudget() {
+            const a = state.afford;
+            const caps = [];
+            if (num(a.income) > 0) {
+                const monthlyIncome = num(a.income) / 12;
+                caps.push({ src: '28% of income', v: monthlyIncome * 0.28 });
+                caps.push({ src: '36% of income minus debts', v: monthlyIncome * 0.36 - num(a.debts) });
+            }
+            if (num(a.budget) > 0) caps.push({ src: 'your comfy payment', v: num(a.budget) });
+            if (!caps.length) return null;
+            return caps.reduce((m, c) => (c.v < m.v ? c : m));
+        }
+
+        // Highest price whose total monthly payment fits the budget (payment rises with price)
+        function maxPriceForBudget(budget, t) {
+            if (budget == null || budget <= 0) return 0;
+            let lo = 0, hi = 3000000;
+            for (let i = 0; i < 40; i++) {
+                const mid = (lo + hi) / 2;
+                if (buyCalc(mid, { totals: t }).total <= budget) lo = mid; else hi = mid;
+            }
+            return Math.floor(lo / 1000) * 1000;
+        }
+
+        function maxPriceNoPMI(t) {
+            const c = num(state.buy.closingPct) / 100;
+            return Math.max(0, Math.floor(t.spendable / (0.20 + c) / 1000) * 1000);
+        }
+
+        function equitySeries(calc) {
+            const g = num(state.buy.appreciation) / 100;
+            const out = [];
+            for (let y = 0; y <= 10; y++) {
+                const value = calc.price * Math.pow(1 + g, y);
+                const bal = balanceAfter(calc.loan, state.buy.rate, calc.pi, y * 12);
+                out.push({ year: y, value, balance: bal, equity: value - bal });
+            }
+            return out;
+        }
+
+        // ═══════════ SEARCH LINKS ═══════════
+        function searchMaxPrice() {
+            const s = state.search;
+            if (s.maxPriceMode === 'none') return null;
+            if (s.maxPriceMode === 'custom') return num(s.maxPrice) || null;
+            return Math.ceil(num(state.buy.price) * 1.10 / 5000) * 5000 || null;
+        }
+
+        function zillowUrl(area) {
+            const s = state.search;
+            const fs = { beds: { min: num(s.minBeds) }, baths: { min: num(s.minBaths) } };
+            if (num(s.minGarage) > 0) {
+                fs.parks = { min: num(s.minGarage) };
+                fs.gar = { value: true };
+            }
+            const mp = searchMaxPrice();
+            if (mp) fs.price = { max: mp };
+            const sqs = { pagination: {}, isMapVisible: true, isListVisible: true, usersSearchTerm: area.name, filterState: fs };
+            return `https://www.zillow.com/${area.slug}/?searchQueryState=${encodeURIComponent(JSON.stringify(sqs))}`;
+        }
+
+        function redfinUrl(zip) {
+            const s = state.search;
+            const f = ['property-type=house', `min-beds=${num(s.minBeds)}`, `min-baths=${num(s.minBaths)}`];
+            if (num(s.minGarage) > 0) f.push(`min-parking=${num(s.minGarage)}`);
+            const mp = searchMaxPrice();
+            if (mp) f.push(`max-price=${Math.round(mp / 1000)}k`);
+            return `https://www.redfin.com/zipcode/${zip}/filter/${f.join(',')}`;
+        }
+
+        function zillowHomeUrl(h) {
+            const q = `${h.street}, ${h.cityLine}`.replace(/\s+/g, '-');
+            return `https://www.zillow.com/homes/${encodeURIComponent(q).replace(/%2C/g, ',')}_rb/`;
+        }
+
+        // ═══════════ BINDINGS ═══════════
+        function bindInputs(root = document) {
+            root.querySelectorAll('[data-bind]').forEach(el => {
+                const path = el.dataset.bind;
+                const v = getPath(state, path);
+                if (document.activeElement !== el) el.value = v == null ? '' : v;
+                if (el.dataset.wired) return;
+                el.dataset.wired = '1';
+                el.addEventListener('input', () => {
+                    let val = el.value;
+                    if (el.hasAttribute('data-num')) val = val === '' ? null : Number(val);
+                    setPath(state, path, val);
+                    // keep twin controls (slider + box) in sync
+                    document.querySelectorAll(`[data-bind="${path}"]`).forEach(o => { if (o !== el) o.value = val == null ? '' : val; });
+                    saveState();
+                    renderOutputs();
+                });
+            });
+        }
+
+        // ═══════════ RENDER: EQUITY ═══════════
+        function renderHomes() {
+            const wrap = document.getElementById('homes-container');
+            wrap.innerHTML = state.homes.map((h, i) => {
+                const color = h.id === 'a' ? 'var(--series-a)' : 'var(--series-b)';
+                const p = `homes.${i}`;
+                return `
+                <div class="glass-card border border-slate-800 rounded-3xl p-5 space-y-4" id="home-card-${h.id}">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-slate-400"><span class="h-2.5 w-2.5 rounded-sm inline-block" style="background:${color}"></span>${esc(nameOf(h.id))}'s house</p>
+                            <h3 class="text-base font-extrabold text-white truncate mt-0.5">${esc(h.street)}</h3>
+                            <p class="text-xs text-slate-500">${esc(h.cityLine)} &middot; ${h.beds} bd / ${h.baths} ba &middot; ${num(h.sqft).toLocaleString()} sqft &middot; ${h.built}</p>
+                        </div>
+                        <a href="${zillowHomeUrl(h)}" target="_blank" rel="noopener" class="flex-shrink-0 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-[10px] font-bold text-sky-300">Zillow <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                    </div>
+
+                    <div class="seg" data-plan-seg="${i}">
+                        <button data-plan="sell">Sell</button>
+                        <button data-plan="keep">Keep</button>
+                        <button data-plan="rent">Rent out</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="field-label">Home value today</label>
+                            <input class="field" type="number" inputmode="decimal" step="1000" data-bind="${p}.value" data-num>
+                            <p class="text-[10px] text-slate-600 mt-1">Zestimate ${money(h.low)}&ndash;${money(h.high)} range, ${esc(h.asOf)}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="field-label">Mortgage payoff balance</label>
+                            <input class="field ${h.mortgageBalance == null ? 'border-amber-500/50' : ''}" type="number" inputmode="decimal" placeholder="Amount owed (0 if paid off)" data-bind="${p}.mortgageBalance" data-num>
+                        </div>
+                        <div>
+                            <label class="field-label">Mortgage rate</label>
+                            <div class="relative"><input class="field pr-8" type="number" inputmode="decimal" step="0.125" placeholder="e.g. 3.5" data-bind="${p}.rate" data-num><span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                        </div>
+                        <div>
+                            <label class="field-label">Principal + interest / mo</label>
+                            <input class="field" type="number" inputmode="decimal" placeholder="not escrow" data-bind="${p}.monthlyPI" data-num>
+                        </div>
+                    </div>
+
+                    <div class="${h.plan === 'sell' ? '' : 'hidden'} space-y-3">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Selling costs</p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="field-label">Agents</label>
+                                <div class="relative"><input class="field pr-6" type="number" inputmode="decimal" step="0.25" data-bind="${p}.agentPct" data-num><span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                            </div>
+                            <div>
+                                <label class="field-label">Closing</label>
+                                <div class="relative"><input class="field pr-6" type="number" inputmode="decimal" step="0.25" data-bind="${p}.closingPct" data-num><span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">%</span></div>
+                            </div>
+                            <div>
+                                <label class="field-label">Repairs</label>
+                                <input class="field" type="number" inputmode="decimal" placeholder="$0" data-bind="${p}.repairs" data-num>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" class="h-4 w-4 accent-sky-500" data-transfer="${i}" ${h.transferTax ? 'checked' : ''}>
+                            Michigan transfer tax (0.86%)
+                        </label>
+                    </div>
+
+                    <div class="${h.plan === 'rent' ? '' : 'hidden'} grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="field-label">Expected rent / mo</label>
+                            <input class="field" type="number" inputmode="decimal" data-bind="${p}.rent" data-num>
+                        </div>
+                        <div>
+                            <label class="field-label">Taxes + insurance / mo</label>
+                            <input class="field" type="number" inputmode="decimal" data-bind="${p}.escrow" data-num>
+                        </div>
+                    </div>
+
+                    <div id="home-out-${h.id}" class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 space-y-1.5 text-xs"></div>
+                </div>`;
+            }).join('');
+
+            wrap.querySelectorAll('[data-plan-seg]').forEach(seg => {
+                const i = Number(seg.dataset.planSeg);
+                seg.querySelectorAll('button').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.plan === state.homes[i].plan);
+                    btn.addEventListener('click', () => {
+                        state.homes[i].plan = btn.dataset.plan;
+                        saveState();
+                        renderHomes();
+                        renderOutputs();
+                    });
+                });
+            });
+            wrap.querySelectorAll('[data-transfer]').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    state.homes[Number(cb.dataset.transfer)].transferTax = cb.checked;
+                    saveState();
+                    renderOutputs();
+                });
+            });
+            bindInputs(wrap);
+        }
+
+        function row(label, value, cls = 'text-slate-200') {
+            return `<div class="flex justify-between gap-3"><span class="text-slate-500">${label}</span><span class="font-bold tabular-nums ${cls}">${value}</span></div>`;
+        }
+
+        function renderEquity(t) {
+            const months = num(state.plan.monthsToPurchase);
+            document.getElementById('months-label').textContent = months === 0 ? 'Now' : `${months} month${months === 1 ? '' : 's'}`;
+            document.getElementById('hero-cash').textContent = money(t.available);
+            const selling = state.homes.filter(h => h.plan === 'sell').length;
+            document.getElementById('hero-cash-sub').textContent =
+                `${months === 0 ? 'If you sold today' : `In ${months} months`}, after selling costs${selling ? '' : ' (no houses set to sell)'}${t.keptEquity > 0 ? ` · plus ${moneyK(t.keptEquity)} equity kept in a house` : ''}`;
+            document.getElementById('hero-equity-now').textContent = money(t.equityNow);
+            document.getElementById('balance-warning').classList.toggle('hidden', !t.anyUnknown);
+
+            // Sources stacked bar: positive sources only, sized by share
+            const pos = t.sources.filter(s => s.value > 0);
+            const sum = pos.reduce((a, s) => a + s.value, 0);
+            document.getElementById('sources-bar').innerHTML = sum > 0
+                ? pos.map(s => `<div class="stack-seg h-full first:rounded-l-full last:rounded-r-full" style="width:${(s.value / sum * 100).toFixed(2)}%;background:${s.color}" title="${esc(s.label)}: ${money(s.value)}"></div>`).join('')
+                : '';
+            document.getElementById('sources-legend').innerHTML = t.sources.length
+                ? t.sources.map(s => `
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background:${s.color}"></span>
+                        <span class="text-slate-400 truncate">${esc(s.label)}</span>
+                        <span class="ml-auto sm:ml-1 font-bold tabular-nums ${s.value < 0 ? 'text-rose-300' : 'text-slate-200'}">${money(s.value)}</span>
+                    </div>`).join('')
+                : '<p class="text-xs text-slate-500">Set a house to Sell or add savings to see where the cash comes from.</p>';
+
+            state.homes.forEach((h, i) => {
+                const p = t.proj[i];
+                const el = document.getElementById(`home-out-${h.id}`);
+                if (!el) return;
+                let html = row('Equity today', money(p.equityNow), 'text-white');
+                if (h.plan === 'sell') {
+                    html += row(`Value in ${months} mo`, money(p.futureValue));
+                    html += row('Payoff at sale', p.balanceUnknown ? 'not entered' : money(p.balanceAtSale), p.balanceUnknown ? 'text-amber-300' : 'text-slate-200');
+                    html += row('Selling costs', '−' + money(p.sellingCosts), 'text-rose-300');
+                    html += `<div class="border-t border-slate-800 my-1.5"></div>`;
+                    html += row('Cash you walk away with', money(p.netProceeds), p.netProceeds < 0 ? 'text-rose-300 text-sm' : 'text-emerald-300 text-sm');
+                    if (!p.balanceUnknown && num(h.monthlyPI) === 0 && p.balanceNow > 0) {
+                        html += `<p class="text-[10px] text-slate-600 pt-1">Add your monthly principal + interest to include the loan paydown before you sell.</p>`;
+                    }
+                } else if (h.plan === 'keep') {
+                    html += row(`Equity in ${months} mo`, money(p.equityAtSale), 'text-emerald-300');
+                    html += `<p class="text-[10px] text-slate-500 pt-1">Kept equity isn't cash for the down payment. A HELOC could tap some of it. Ask Big Jim.</p>`;
+                } else {
+                    html += row(`Equity in ${months} mo`, money(p.equityAtSale), 'text-emerald-300');
+                    if (num(h.rent) > 0) {
+                        html += row('Rent cash flow / mo', money(p.rentCashFlow), p.rentCashFlow < 0 ? 'text-rose-300' : 'text-emerald-300');
+                        html += `<p class="text-[10px] text-slate-600 pt-1">Rent minus mortgage, taxes, insurance, and 10% for vacancy and upkeep.</p>`;
+                    } else {
+                        html += `<p class="text-[10px] text-slate-500 pt-1">Enter expected rent to see monthly cash flow.</p>`;
+                    }
+                }
+                el.innerHTML = html;
+            });
+        }
+
+        // ═══════════ RENDER: BUY ═══════════
+        function renderBuy(t) {
+            const c = buyCalc(state.buy.price, { totals: t });
+            document.getElementById('buy-monthly').textContent = money(c.total);
+            document.getElementById('buy-equity-day1').textContent = money(c.down);
+            document.getElementById('buy-equity-day1-sub').textContent = `${pct(c.downPct)} down · loan ${moneyK(c.loan)}`;
+
+            const parts = [
+                ['Principal & interest', c.pi],
+                ['Property tax', c.tax],
+                ['Homeowners insurance', c.ins],
+                ['PMI', c.pmi],
+                ['HOA', c.hoa]
+            ].filter(([, v]) => v > 0);
+            document.getElementById('buy-breakdown').innerHTML = parts.map(([l, v]) => {
+                const w = c.total > 0 ? v / c.total * 100 : 0;
+                return `<div class="text-xs">
+                    <div class="flex justify-between"><span class="text-slate-400">${l}</span><span class="font-bold tabular-nums text-slate-200">${money(v)}</span></div>
+                    <div class="h-1.5 mt-1 rounded-full bg-slate-900 overflow-hidden"><div class="h-full rounded-full bg-sky-500/70" style="width:${w.toFixed(1)}%"></div></div>
+                </div>`;
+            }).join('');
+
+            const alerts = [];
+            if (c.leftover < 0) alerts.push(['rose', 'fa-circle-exclamation', `Short ${money(-c.leftover)} for down payment + closing at this price.`]);
+            if (c.pmi > 0) {
+                const need20 = c.price * 0.20 - c.down;
+                alerts.push(['amber', 'fa-triangle-exclamation', `Under 20% down adds PMI of about ${money(c.pmi)}/mo. ${money(need20)} more down removes it.`]);
+            }
+            if (c.downPct < 3 && c.price > 0) alerts.push(['rose', 'fa-circle-exclamation', 'Most conventional loans need at least 3% down (FHA 3.5%).']);
+            document.getElementById('buy-alerts').innerHTML = alerts.map(([tone, icon, text]) =>
+                `<div class="flex items-start gap-2 p-2.5 rounded-xl bg-${tone}-500/10 border border-${tone}-500/25 text-xs text-${tone}-200"><i class="fa-solid ${icon} mt-0.5 text-${tone}-400"></i><span>${text}</span></div>`
+            ).join('');
+
+            document.querySelectorAll('#down-mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.buy.downMode));
+            document.getElementById('down-custom-wrap').classList.toggle('hidden', state.buy.downMode !== 'custom');
+            document.querySelectorAll('#term-seg button').forEach(b => b.classList.toggle('active', Number(b.dataset.term) === num(state.buy.term)));
+
+            const box = (label, value, cls = 'text-slate-100') => `<div class="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5"><p class="text-[10px] text-slate-500 font-semibold">${label}</p><p class="font-extrabold tabular-nums ${cls}">${value}</p></div>`;
+            document.getElementById('down-summary').innerHTML =
+                box('Cash available', money(t.spendable)) +
+                box('Down payment', `${money(c.down)} <span class="text-[10px] text-slate-500 font-semibold">${pct(c.downPct)}</span>`) +
+                box('Closing costs', money(c.closing)) +
+                box(c.leftover >= 0 ? 'Left over after closing' : 'Shortfall', money(Math.abs(c.leftover)), c.leftover >= 0 ? 'text-emerald-300' : 'text-rose-300');
+
+            // Affordability
+            const budget = housingBudget();
+            const noPmi = maxPriceNoPMI(t);
+            let ah = '';
+            ah += `<div class="flex items-center justify-between gap-3 p-3 bg-slate-950/60 border border-slate-800 rounded-xl text-xs"><span class="text-slate-400">Highest price with 20% down (no PMI)</span><button class="font-extrabold tabular-nums text-sky-300 underline decoration-dotted" onclick="setPrice(${noPmi})">${money(noPmi)}</button></div>`;
+            if (budget) {
+                const maxB = maxPriceForBudget(budget.v, t);
+                ah += `<div class="flex items-center justify-between gap-3 p-3 bg-slate-950/60 border border-slate-800 rounded-xl text-xs"><span class="text-slate-400">Highest price at ${money(budget.v)}/mo <span class="text-slate-600">(${esc(budget.src)})</span></span><button class="font-extrabold tabular-nums text-sky-300 underline decoration-dotted" onclick="setPrice(${maxB})">${money(maxB)}</button></div>`;
+            }
+            if (num(state.afford.income) > 0) {
+                const mi = num(state.afford.income) / 12;
+                const front = c.total / mi * 100;
+                const back = (c.total + num(state.afford.debts)) / mi * 100;
+                const status = (v, ok, warn) => v <= ok ? ['emerald', 'fa-circle-check', 'Comfortable'] : v <= warn ? ['amber', 'fa-triangle-exclamation', 'Stretch'] : ['rose', 'fa-circle-exclamation', 'Over typical limits'];
+                const [ft, fi, fl] = status(front, 28, 33);
+                const [bt, bi, bl] = status(back, 36, 43);
+                ah += `<div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl"><p class="text-[10px] text-slate-500 font-semibold">Housing / income</p><p class="font-extrabold tabular-nums text-slate-100">${pct(front)}</p><p class="text-[10px] text-${ft}-300"><i class="fa-solid ${fi} mr-1"></i>${fl}</p></div>
+                    <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl"><p class="text-[10px] text-slate-500 font-semibold">All debts / income</p><p class="font-extrabold tabular-nums text-slate-100">${pct(back)}</p><p class="text-[10px] text-${bt}-300"><i class="fa-solid ${bi} mr-1"></i>${bl}</p></div>
+                </div>`;
+            }
+            document.getElementById('afford-results').innerHTML = ah;
+
+            renderEquityChart(c);
+        }
+
+        function setPrice(p) {
+            state.buy.price = p;
+            saveState();
+            bindInputs();
+            renderOutputs();
+            showToast(`Target price set to ${money(p)}`, 'sky');
+        }
+
+        function renderEquityChart(c) {
+            const series = equitySeries(c);
+            document.getElementById('equity-chart-sub').textContent =
+                `${money(c.price)} home · ${moneyK(series[5].equity)} equity in 5 yrs · ${moneyK(series[10].equity)} in 10`;
+
+            const host = document.getElementById('equity-chart');
+            // Draw at the container's real pixel width so labels stay readable on phones
+            const W = Math.max(300, Math.round(host.clientWidth || 340)), H = 210, padL = 46, padR = 6, padT = 18, padB = 24;
+            const plotW = W - padL - padR, plotH = H - padT - padB;
+            const maxV = Math.max(1, ...series.map(s => s.equity));
+            const step = niceStep(maxV / 4);
+            const top = Math.ceil(maxV / step) * step;
+            const y = v => padT + plotH - (Math.max(0, v) / top) * plotH;
+            const slot = plotW / series.length;
+            const bw = Math.max(6, slot - Math.max(3, slot * 0.22));
+
+            let svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto block" role="img" aria-label="Projected equity in the new home by year">`;
+            for (let v = 0; v <= top + 1; v += step) {
+                svg += `<line x1="${padL}" x2="${W - padR}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+                svg += `<text x="${padL - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="var(--axis-text)">${moneyK(v)}</text>`;
+            }
+            series.forEach((s, i) => {
+                const x = padL + i * slot + (slot - bw) / 2;
+                const y0 = y(0), y1 = y(s.equity);
+                const h = Math.max(0, y0 - y1);
+                const r = Math.min(4, h, bw / 2);
+                // rounded data-end, square at the baseline
+                svg += `<path d="M${x},${y0} V${y1 + r} Q${x},${y1} ${x + r},${y1} H${x + bw - r} Q${x + bw},${y1} ${x + bw},${y1 + r} V${y0} Z" fill="var(--series-new)" class="eq-bar" data-i="${i}"/>`;
+                svg += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--axis-text)">${i === 0 ? 'Buy' : 'Y' + i}</text>`;
+                if (i === 0 || i === series.length - 1) {
+                    svg += `<text x="${x + bw / 2}" y="${y1 - 5}" text-anchor="middle" font-size="10" font-weight="700" fill="#e2e8f0">${moneyK(s.equity)}</text>`;
+                }
+                svg += `<rect x="${padL + i * slot}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" class="eq-hit" data-i="${i}"/>`;
+            });
+            svg += `</svg><div id="chart-tooltip" class="hidden"></div>`;
+            host.innerHTML = svg;
+
+            const tip = host.querySelector('#chart-tooltip');
+            const svgEl = host.querySelector('svg');
+            const show = (i, evt) => {
+                const s = series[i];
+                host.querySelectorAll('.eq-bar').forEach(b => b.style.opacity = Number(b.dataset.i) === i ? '1' : '0.55');
+                tip.innerHTML = `<div class="font-bold text-white mb-0.5">${i === 0 ? 'At purchase' : 'Year ' + i}</div>
+                    <div>Equity <span class="font-bold">${money(s.equity)}</span></div>
+                    <div class="text-slate-400">Value ${money(s.value)} · owe ${money(s.balance)}</div>`;
+                const rect = svgEl.getBoundingClientRect();
+                const scale = rect.width / W;
+                const cx = (padL + i * slot + slot / 2) * scale;
+                tip.style.left = Math.min(Math.max(cx, 90), rect.width - 90) + 'px';
+                tip.style.top = (y(s.equity) * scale) + 'px';
+                tip.classList.remove('hidden');
+            };
+            const hide = () => {
+                tip.classList.add('hidden');
+                host.querySelectorAll('.eq-bar').forEach(b => b.style.opacity = '1');
+            };
+            host.querySelectorAll('.eq-hit').forEach(r => {
+                r.addEventListener('pointerenter', e => show(Number(r.dataset.i), e));
+                r.addEventListener('pointerdown', e => show(Number(r.dataset.i), e));
+            });
+            svgEl.addEventListener('pointerleave', hide);
+
+            document.getElementById('equity-table').innerHTML = `<table class="w-full text-[11px] tabular-nums">
+                <thead><tr class="text-slate-500"><th class="text-left font-semibold py-1">Year</th><th class="text-right font-semibold">Value</th><th class="text-right font-semibold">Owed</th><th class="text-right font-semibold">Equity</th></tr></thead>
+                <tbody>${series.map(s => `<tr class="border-t border-slate-900"><td class="py-1 text-slate-400">${s.year === 0 ? 'Buy' : s.year}</td><td class="text-right text-slate-300">${money(s.value)}</td><td class="text-right text-slate-300">${money(s.balance)}</td><td class="text-right font-bold text-slate-100">${money(s.equity)}</td></tr>`).join('')}</tbody>
+            </table>`;
+        }
+
+        function niceStep(raw) {
+            if (raw <= 0) return 1;
+            const p = Math.pow(10, Math.floor(Math.log10(raw)));
+            const f = raw / p;
+            return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+        }
+
+        // ═══════════ RENDER: HOMES ═══════════
+        function renderCriteria() {
+            const items = [
+                ['minBeds', 'Beds', 'fa-bed', 1],
+                ['minBaths', 'Baths', 'fa-bath', 0.5],
+                ['minGarage', 'Garage', 'fa-warehouse', 1]
+            ];
+            document.getElementById('criteria-steppers').innerHTML = items.map(([k, label, icon, stepV]) => `
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-2.5 text-center">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase"><i class="fa-solid ${icon} mr-1"></i>${label}</p>
+                    <div class="flex items-center justify-between mt-1.5">
+                        <button class="h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 active:scale-95" onclick="stepCriteria('${k}', -${stepV})" aria-label="Fewer ${label}">&minus;</button>
+                        <span class="text-lg font-extrabold text-white tabular-nums">${state.search[k]}+</span>
+                        <button class="h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 active:scale-95" onclick="stepCriteria('${k}', ${stepV})" aria-label="More ${label}">+</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function stepCriteria(k, d) {
+            state.search[k] = Math.max(0, Math.min(10, num(state.search[k]) + d));
+            saveState();
+            renderCriteria();
+            renderOutputs();
+        }
+
+        function renderSearch() {
+            const s = state.search;
+            document.querySelectorAll('#maxprice-seg button').forEach(b => b.classList.toggle('active', b.dataset.mp === s.maxPriceMode));
+            document.getElementById('maxprice-custom-wrap').classList.toggle('hidden', s.maxPriceMode !== 'custom');
+            const mp = searchMaxPrice();
+            document.getElementById('maxprice-note').textContent = mp
+                ? `Searching up to ${money(mp)} · ${s.minBeds}+ bd · ${s.minBaths}+ ba · ${s.minGarage}+ car garage`
+                : `No price cap · ${s.minBeds}+ bd · ${s.minBaths}+ ba · ${s.minGarage}+ car garage`;
+
+            document.getElementById('areas-list').innerHTML = s.areas.map((a, i) => `
+                <div class="flex items-center gap-2 p-2.5 bg-slate-950/60 border ${a.on ? 'border-slate-800' : 'border-slate-900 opacity-60'} rounded-2xl">
+                    <button onclick="toggleArea(${i})" class="h-8 w-8 flex-shrink-0 rounded-lg ${a.on ? 'text-amber-400' : 'text-slate-600'}" aria-label="Favorite ${esc(a.name)}"><i class="fa-${a.on ? 'solid' : 'regular'} fa-star"></i></button>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-slate-100 truncate">${esc(a.name.replace(/,\s*MI$/i, ''))}</p>
+                        <div class="flex gap-1 flex-wrap mt-0.5">${a.zips.map(z => `<a href="${redfinUrl(z)}" target="_blank" rel="noopener" class="text-[10px] font-semibold text-slate-500 hover:text-rose-300">${esc(z)}</a>`).join('<span class="text-slate-700 text-[10px]">·</span>')}</div>
+                    </div>
+                    <a href="${zillowUrl(a)}" target="_blank" rel="noopener" class="px-2.5 py-2 rounded-lg bg-[#006aff]/15 border border-[#006aff]/40 text-[11px] font-extrabold text-sky-200 hover:bg-[#006aff]/25">Zillow</a>
+                    <a href="${redfinUrl(a.zips[0])}" target="_blank" rel="noopener" class="px-2.5 py-2 rounded-lg bg-[#a02021]/20 border border-[#d33f3f]/40 text-[11px] font-extrabold text-rose-200 hover:bg-[#a02021]/30">Redfin</a>
+                    <button onclick="removeArea(${i})" class="h-8 w-6 flex-shrink-0 text-slate-700 hover:text-rose-400" aria-label="Remove ${esc(a.name)}"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>`).join('') || '<p class="text-xs text-slate-500">No areas yet. Add one above.</p>';
+
+            renderSaved();
+        }
+
+        function toggleArea(i) { state.search.areas[i].on = !state.search.areas[i].on; saveState(); renderSearch(); }
+        function removeArea(i) {
+            const a = state.search.areas[i];
+            if (!confirm(`Remove ${a.name} from your search areas?`)) return;
+            state.search.areas.splice(i, 1);
+            saveState();
+            renderSearch();
+        }
+        function openAreaModal() {
+            document.getElementById('area-name').value = '';
+            document.getElementById('area-zips').value = '';
+            openModal('area-modal');
+        }
+        function saveArea() {
+            let name = document.getElementById('area-name').value.trim();
+            const zips = document.getElementById('area-zips').value.split(/[\s,]+/).map(z => z.trim()).filter(z => /^\d{5}$/.test(z));
+            if (!name) return showToast('Enter a city, like "Climax, MI"', 'rose');
+            if (!zips.length) return showToast('Enter at least one 5-digit ZIP', 'rose');
+            if (!/,\s*[A-Za-z]{2}$/.test(name)) name += ', MI';
+            const slug = name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+            state.search.areas.push({ name, slug, zips, on: true });
+            saveState();
+            closeModal('area-modal');
+            renderSearch();
+            showToast(`${name} added`, 'emerald');
+        }
+
+        // ═══════════ SAVED HOMES ═══════════
+        const STATUS_META = {
+            interested: ['Interested', 'sky'],
+            toured: ['Toured', 'violet'],
+            offer: ['Offer', 'emerald'],
+            pass: ['Pass', 'slate']
+        };
+
+        function criteriaBadges(h) {
+            const s = state.search;
+            const checks = [
+                ['bd', h.beds, s.minBeds],
+                ['ba', h.baths, s.minBaths],
+                ['car', h.garage, s.minGarage]
+            ];
+            return checks.map(([label, v, min]) => {
+                if (v == null || v === '') return `<span class="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-500">? ${label}</span>`;
+                const ok = num(v) >= num(min);
+                return `<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'}"><i class="fa-solid ${ok ? 'fa-check' : 'fa-xmark'} mr-0.5"></i>${v} ${label}</span>`;
+            }).join('');
+        }
+
+        function meetsAll(h) {
+            const s = state.search;
+            return num(h.beds) >= s.minBeds && num(h.baths) >= s.minBaths && num(h.garage) >= s.minGarage;
+        }
+
+        function renderSaved() {
+            const t = totals();
+            const sorts = [['added', 'Newest'], ['price', 'Price'], ['payment', 'Payment'], ['rating', 'Rating']];
+            document.getElementById('saved-sort').innerHTML = state.saved.length > 1 ? sorts.map(([k, l]) =>
+                `<button onclick="setSavedSort('${k}')" class="px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${state.savedSort === k ? 'bg-sky-500/15 border-sky-500/40 text-sky-300' : 'bg-slate-900 border-slate-800 text-slate-400'}">${l}</button>`
+            ).join('') : '';
+            document.getElementById('saved-count').textContent = state.saved.length ? `(${state.saved.length})` : '';
+
+            if (!state.saved.length) {
+                document.getElementById('saved-list').innerHTML = `
+                    <div class="text-center py-7 px-4 border border-dashed border-slate-800 rounded-2xl">
+                        <i class="fa-solid fa-house-circle-check text-2xl text-slate-700"></i>
+                        <p class="text-xs text-slate-400 mt-2 font-semibold">No saved homes yet</p>
+                        <p class="text-[11px] text-slate-600 mt-1">Find one on Zillow or Redfin, copy the link, and tap Add. Home Vault checks your must-haves and runs the payment.</p>
+                    </div>`;
+                return;
+            }
+
+            const rows = state.saved.map(h => ({ h, c: buyCalc(h.price, { totals: t, hoa: h.hoa }) }));
+            const avgRating = h => {
+                const r = [h.ratingA, h.ratingB].filter(v => v > 0);
+                return r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0;
+            };
+            const sorters = {
+                added: (a, b) => (b.h.addedAt || 0) - (a.h.addedAt || 0),
+                price: (a, b) => num(a.h.price) - num(b.h.price),
+                payment: (a, b) => a.c.total - b.c.total,
+                rating: (a, b) => avgRating(b.h) - avgRating(a.h)
+            };
+            rows.sort(sorters[state.savedSort] || sorters.added);
+
+            document.getElementById('saved-list').innerHTML = rows.map(({ h, c }) => {
+                const [statusLabel, tone] = STATUS_META[h.status] || STATUS_META.interested;
+                const src = /zillow\./i.test(h.url || '') ? 'Zillow' : /redfin\./i.test(h.url || '') ? 'Redfin' : /realtor\./i.test(h.url || '') ? 'Realtor.com' : 'Listing';
+                const stars = (key, who) => `<div class="flex items-center gap-1"><span class="text-[10px] text-slate-500 font-semibold w-14 truncate">${esc(nameOf(who))}</span>${[1, 2, 3, 4, 5].map(n =>
+                    `<button onclick="rateHome('${h.id}','${key}',${n})" class="text-sm ${num(h[key]) >= n ? 'text-amber-400' : 'text-slate-700'}" aria-label="${n} stars"><i class="fa-solid fa-star"></i></button>`).join('')}</div>`;
+                return `
+                <div class="p-4 bg-slate-950/60 border ${h.status === 'pass' ? 'border-slate-900 opacity-60' : 'border-slate-800'} rounded-2xl space-y-2.5">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-extrabold text-white leading-snug">${esc(h.address || 'Untitled home')}</p>
+                            <p class="text-xs text-slate-400 mt-0.5"><span class="font-bold text-slate-200">${money(h.price)}</span>${h.sqft ? ` · ${num(h.sqft).toLocaleString()} sqft` : ''}${h.year ? ` · ${esc(h.year)}` : ''}</p>
+                        </div>
+                        <span class="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-${tone}-500/10 border border-${tone}-500/30 text-${tone}-300">${statusLabel}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1">${criteriaBadges(h)}${meetsAll(h) ? '<span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/10 border border-sky-500/30 text-sky-300"><i class="fa-solid fa-medal mr-0.5"></i>Meets all</span>' : ''}</div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 rounded-xl bg-slate-900/70"><p class="text-[9px] text-slate-500 font-bold uppercase">Payment</p><p class="text-xs font-extrabold tabular-nums text-slate-100">${money(c.total)}</p></div>
+                        <div class="p-2 rounded-xl bg-slate-900/70"><p class="text-[9px] text-slate-500 font-bold uppercase">Down</p><p class="text-xs font-extrabold tabular-nums text-slate-100">${pct(c.downPct, 0)}</p></div>
+                        <div class="p-2 rounded-xl bg-slate-900/70"><p class="text-[9px] text-slate-500 font-bold uppercase">${c.leftover >= 0 ? 'Cash left' : 'Short'}</p><p class="text-xs font-extrabold tabular-nums ${c.leftover >= 0 ? 'text-emerald-300' : 'text-rose-300'}">${moneyK(Math.abs(c.leftover))}</p></div>
+                    </div>
+                    ${h.notes ? `<p class="text-[11px] text-slate-400 leading-relaxed whitespace-pre-line">${esc(h.notes)}</p>` : ''}
+                    <div class="flex flex-wrap gap-x-4 gap-y-1">${stars('ratingA', 'a')}${stars('ratingB', 'b')}</div>
+                    <div class="flex gap-2 pt-1">
+                        ${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener" class="flex-1 py-2 text-center rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-bold text-slate-200 hover:border-slate-700">${src} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>` : ''}
+                        <button onclick="runNumbers('${h.id}')" class="flex-1 py-2 rounded-xl bg-sky-500/15 border border-sky-500/40 text-[11px] font-bold text-sky-200">Run numbers</button>
+                        <button onclick="askJimAbout('${h.id}')" class="flex-1 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-200">Ask Jim</button>
+                        <button onclick="openHomeModal('${h.id}')" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function setSavedSort(k) { state.savedSort = k; saveState(); renderSaved(); }
+
+        function rateHome(id, key, n) {
+            const h = state.saved.find(x => x.id === id);
+            if (!h) return;
+            h[key] = num(h[key]) === n ? 0 : n;
+            saveState();
+            renderSaved();
+        }
+
+        function runNumbers(id) {
+            const h = state.saved.find(x => x.id === id);
+            if (!h || !num(h.price)) return showToast('Add a price for this home first', 'rose');
+            state.buy.price = num(h.price);
+            if (h.hoa != null && h.hoa !== '') state.buy.hoaMo = num(h.hoa);
+            saveState();
+            bindInputs();
+            switchTab('buy');
+            showToast(`Running numbers for ${h.address || 'this home'}`, 'sky');
+        }
+
+        let homeModalStatus = 'interested';
+        function setHomeStatus(s) {
+            homeModalStatus = s;
+            document.querySelectorAll('#hm-status-seg button').forEach(b => b.classList.toggle('active', b.dataset.status === s));
+        }
+
+        function openHomeModal(id, prefill = {}) {
+            const h = id ? state.saved.find(x => x.id === id) : null;
+            const v = h || prefill;
+            document.getElementById('home-modal-title').textContent = h ? 'Edit home' : 'Add a home';
+            document.getElementById('hm-id').value = h ? h.id : '';
+            const set = (elId, val) => { document.getElementById(elId).value = val == null ? '' : val; };
+            set('hm-url', v.url); set('hm-address', v.address); set('hm-price', v.price);
+            set('hm-beds', v.beds); set('hm-baths', v.baths); set('hm-garage', v.garage);
+            set('hm-sqft', v.sqft); set('hm-year', v.year); set('hm-hoa', v.hoa); set('hm-notes', v.notes);
+            setHomeStatus(v.status || 'interested');
+            document.getElementById('hm-delete').classList.toggle('hidden', !h);
+            openModal('home-modal');
+        }
+
+        function guessAddressFromUrl(u) {
+            try {
+                const url = new URL(u);
+                const p = decodeURIComponent(url.pathname);
+                let m = p.match(/\/homedetails\/([^/]+)\//);
+                if (m) return m[1].replace(/-/g, ' ').replace(/\s([A-Z]{2})\s(\d{5})$/, ', $1 $2');
+                m = p.match(/^\/([A-Z]{2})\/([^/]+)\/([^/]+)\/home\//);
+                if (m) {
+                    const zip = (m[3].match(/-(\d{5})$/) || [])[1];
+                    const street = m[3].replace(/-\d{5}$/, '').replace(/-/g, ' ');
+                    return `${street}, ${m[2].replace(/-/g, ' ')}, ${m[1]}${zip ? ' ' + zip : ''}`;
+                }
+                m = p.match(/realestateandhomes-detail\/([^/]+)/);
+                if (m) return m[1].replace(/_M[\d-]+$/, '').replace(/_/g, ', ').replace(/-/g, ' ');
+            } catch (e) {}
+            return '';
+        }
+
+        function onHomeUrlInput() {
+            const url = document.getElementById('hm-url').value.trim();
+            const addr = document.getElementById('hm-address');
+            if (!addr.value.trim()) {
+                const g = guessAddressFromUrl(url);
+                if (g) addr.value = g;
+            }
+        }
+
+        function saveHome() {
+            const val = id => document.getElementById(id).value.trim();
+            const numOrNull = id => { const v = val(id); return v === '' ? null : Number(v); };
+            const id = val('hm-id');
+            const data = {
+                url: val('hm-url'),
+                address: val('hm-address') || guessAddressFromUrl(val('hm-url')),
+                price: numOrNull('hm-price'),
+                beds: numOrNull('hm-beds'),
+                baths: numOrNull('hm-baths'),
+                garage: numOrNull('hm-garage'),
+                sqft: numOrNull('hm-sqft'),
+                year: numOrNull('hm-year'),
+                hoa: numOrNull('hm-hoa'),
+                notes: val('hm-notes'),
+                status: homeModalStatus
+            };
+            if (data.url && !/^https?:\/\//i.test(data.url)) data.url = 'https://' + data.url;
+            if (!data.address && !data.url) return showToast('Add a link or an address', 'rose');
+            if (id) {
+                Object.assign(state.saved.find(x => x.id === id), data);
+            } else {
+                state.saved.push(Object.assign({ id: 'h' + Date.now().toString(36), addedAt: Date.now(), ratingA: 0, ratingB: 0 }, data));
+            }
+            saveState();
+            closeModal('home-modal');
+            renderSaved();
+            renderJim();
+            showToast(id ? 'Home updated' : 'Home saved', 'emerald');
+        }
+
+        function deleteHome() {
+            const id = document.getElementById('hm-id').value;
+            if (!id || !confirm('Delete this saved home?')) return;
+            state.saved = state.saved.filter(x => x.id !== id);
+            saveState();
+            closeModal('home-modal');
+            renderSaved();
+        }
+
+        // ═══════════ BIG JIM: SNIFF TEST (works offline) ═══════════
+        function bigJimTips() {
+            const t = totals();
+            const c = buyCalc(state.buy.price, { totals: t });
+            const tips = [];
+            const A = nameOf('a'), B = nameOf('b');
+            const unknown = state.homes.filter((h, i) => t.proj[i].balanceUnknown).map(h => nameOf(h.id));
+
+            if (unknown.length) {
+                tips.push({ tone: 'amber', icon: 'fa-file-invoice-dollar', title: 'I need payoff numbers',
+                    body: `I can't sniff out real equity without ${unknown.join(' and ')}'s mortgage payoff balance. Grab it from the latest statement or the lender's app and drop it in the Equity tab. Enter $0 if a house is paid off.` });
+            }
+
+            const selling = state.homes.filter(h => h.plan === 'sell');
+            if (selling.length) {
+                const costs = t.proj.reduce((s, p, i) => s + (state.homes[i].plan === 'sell' ? p.sellingCosts : 0), 0);
+                tips.push({ tone: 'sky', icon: 'fa-sack-dollar', title: `${money(t.available)} in the war chest`,
+                    body: `That's after about ${money(costs)} in agent fees, closing costs, and Michigan transfer tax on ${selling.length === 2 ? 'both sales' : 'the sale'}. Agent commissions are negotiable since the 2024 rule changes. Interview at least two listing agents and ask for their rate in writing.` });
+            }
+
+            if (c.leftover < 0) {
+                tips.push({ tone: 'rose', icon: 'fa-circle-exclamation', title: `Short ${money(-c.leftover)} at ${moneyK(c.price)}`,
+                    body: `Either lower the target price, put less down (and eat some PMI), or add savings. With what you've got, ${money(maxPriceNoPMI(t))} keeps you at 20% down with no PMI.` });
+            } else if (c.pmi > 0) {
+                tips.push({ tone: 'amber', icon: 'fa-triangle-exclamation', title: `PMI is costing ${money(c.pmi)}/mo`,
+                    body: `You're at ${pct(c.downPct)} down. Another ${money(c.price * 0.2 - c.down)} gets you to 20% and kills PMI. If you can't, PMI comes off on its own at 78% loan-to-value, or you can request removal at 80%.` });
+            } else if (c.leftover > 20000) {
+                tips.push({ tone: 'emerald', icon: 'fa-circle-check', title: `${moneyK(c.leftover)} left over after closing`,
+                    body: `Nice cushion. Keep 3 to 6 months of expenses liquid for the new place's surprises (furnace, roof, water heater). Anything past that could go toward more down or a rate buydown.` });
+            }
+
+            const budget = housingBudget();
+            if (budget && c.total > budget.v) {
+                tips.push({ tone: 'rose', icon: 'fa-scale-unbalanced', title: 'Payment is over your comfort line',
+                    body: `${money(c.total)}/mo is above ${money(budget.v)} (${budget.src}). The highest price that fits is about ${money(maxPriceForBudget(budget.v, t))}.` });
+            } else if (!num(state.afford.income)) {
+                tips.push({ tone: 'slate', icon: 'fa-scale-balanced', title: 'Tell me your income (optional)',
+                    body: `Add your combined gross income in the Buy tab and I'll check the payment against what lenders like to see: 28% of income for housing, 36% for all debts.` });
+            }
+
+            if (selling.length === 2 || (selling.length && c.down > num(state.plan.savings))) {
+                tips.push({ tone: 'violet', icon: 'fa-shuffle', title: 'Sell first or buy first?',
+                    body: `Your down payment depends on selling. Three plays: (1) sell first and negotiate a rent-back so you aren't homeless, (2) make offers contingent on your sale (weaker in a hot market), or (3) bridge the gap with a HELOC or bridge loan, then pay it off when the houses close. Get a lender to quote option 3 before you shop.` });
+            }
+
+            tips.push({ tone: 'sky', icon: 'fa-landmark', title: 'Michigan tax trap: uncapping',
+                body: `When a Michigan home sells, its taxable value resets to the current assessed value, so the seller's tax bill on the listing is usually too low for you. Budget from the price, like this app does at ${pct(num(state.buy.taxRate), 2)}. Ask the city assessor for the millage rate on any house you're serious about.` });
+
+            tips.push({ tone: 'emerald', icon: 'fa-file-signature', title: 'File the homestead exemption',
+                body: `After closing, file the Principal Residence Exemption (Form 2368) with the new city's assessor. Without it you pay up to 18 extra school mills. If one of you keeps a house as a rental, that house loses its exemption.` });
+
+            if (state.homes.some(h => h.plan === 'rent' || h.plan === 'keep')) {
+                tips.push({ tone: 'amber', icon: 'fa-house-user', title: 'Keeping a house? Watch the 3-year clock',
+                    body: `Profit on a home you lived in 2 of the last 5 years is tax-free up to $250k per person. Rent it out too long (past about 3 years) and that exclusion goes away. Talk to a tax pro before deciding.` });
+            }
+
+            const garageMiss = state.saved.filter(h => h.garage != null && num(h.garage) < state.search.minGarage && h.status !== 'pass');
+            if (garageMiss.length) {
+                tips.push({ tone: 'rose', icon: 'fa-warehouse', title: `${garageMiss.length} saved home${garageMiss.length > 1 ? 's' : ''} miss the garage rule`,
+                    body: `You said ${state.search.minGarage}-car minimum. ${garageMiss.map(h => h.address || 'Untitled').slice(0, 3).join('; ')} ${garageMiss.length > 1 ? "don't" : "doesn't"} make it. Pass, or price in building one (often $30k to $60k for a detached 2-car).` });
+            }
+
+            tips.push({ tone: 'slate', icon: 'fa-shield-dog', title: 'Before you sign anything',
+                body: `Get pre-approved (not just pre-qualified), always do a full inspection, and add a sewer scope on anything older than about 1980. ${A}'s 1948 house and ${B}'s 1920 house mean you both already know old-house surprises.` });
+
+            return tips;
+        }
+
+        function renderJim() {
+            const tips = bigJimTips();
+            document.getElementById('jim-tips').innerHTML = tips.map(tp => `
+                <div class="flex items-start gap-3 p-3.5 rounded-2xl bg-${tp.tone}-500/5 border border-${tp.tone}-500/20">
+                    <div class="h-8 w-8 flex-shrink-0 rounded-xl bg-${tp.tone}-500/15 flex items-center justify-center"><i class="fa-solid ${tp.icon} text-${tp.tone}-400 text-sm"></i></div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-extrabold text-slate-100">${esc(tp.title)}</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed mt-0.5">${esc(tp.body)}</p>
+                    </div>
+                </div>`).join('');
+
+            const ai = hasAI();
+            const st = document.getElementById('jim-status');
+            st.innerHTML = ai
+                ? '<span class="text-emerald-400"><i class="fa-solid fa-circle text-[6px] align-middle mr-1"></i>AI brain connected</span>'
+                : '<button onclick="openSettings()" class="text-amber-300 hover:text-amber-200"><i class="fa-solid fa-circle text-[6px] align-middle mr-1"></i>Playbook mode · add a free AI key</button>';
+            document.getElementById('ai-dot').classList.toggle('hidden', ai);
+        }
+
+        // ═══════════ BIG JIM: CHAT ═══════════
+        const CHAT_CHIPS = [
+            'How much house can we afford?',
+            'Should we sell both houses?',
+            'Sell first or buy first?',
+            'How do we lower our payment?',
+            'What should we look for on tours?'
+        ];
+
+        function geminiKey() { return localStorage.getItem('hv_gemini_api_key') || localStorage.getItem('wv_gemini_api_key') || ''; }
+        function openrouterKey() { return localStorage.getItem('hv_openrouter_api_key') || localStorage.getItem('wv_openrouter_api_key') || ''; }
+        function openrouterModel() { return localStorage.getItem('wv_openrouter_model') || 'qwen/qwen-2.5-72b-instruct:free'; }
+        function hasAI() { return !!(geminiKey() || openrouterKey()); }
+
+        function renderChat() {
+            const list = document.getElementById('chat-list');
+            if (!state.chat.length) {
+                list.innerHTML = `<div class="flex items-start gap-2.5">
+                    <img src="big_jim_avatar.jpg" alt="" class="h-8 w-8 rounded-full object-cover border border-slate-700 flex-shrink-0">
+                    <div class="chat-bubble max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-tl-md bg-slate-900 border border-slate-800 text-xs text-slate-200 leading-relaxed">
+                        Big Jim here. ${esc(nameOf('a'))}, ${esc(nameOf('b'))}, I've already sniffed both your houses. Ask me anything about equity, what you can afford, or a listing you're eyeing.
+                    </div></div>`;
+            } else {
+                list.innerHTML = state.chat.map(m => m.role === 'user'
+                    ? `<div class="flex justify-end"><div class="max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-tr-md bg-sky-500 text-slate-950 text-xs font-semibold leading-relaxed">${esc(m.text)}</div></div>`
+                    : `<div class="flex items-start gap-2.5">
+                        <img src="big_jim_avatar.jpg" alt="" class="h-8 w-8 rounded-full object-cover border border-slate-700 flex-shrink-0">
+                        <div class="chat-bubble max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-tl-md bg-slate-900 border border-slate-800 text-xs text-slate-200 leading-relaxed">${miniMarkdown(m.text)}${m.provider ? `<p class="text-[9px] text-slate-600 mt-1.5">${esc(m.provider)}</p>` : ''}</div>
+                    </div>`
+                ).join('');
+            }
+            document.getElementById('chat-chips').innerHTML = CHAT_CHIPS.map(q =>
+                `<button onclick="askJim(${esc(JSON.stringify(q))})" class="px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 hover:border-sky-500/40 text-[11px] font-semibold text-slate-300 whitespace-nowrap">${esc(q)}</button>`
+            ).join('');
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // Escape first, then allow **bold**, bullets, and paragraphs
+        function miniMarkdown(text) {
+            const lines = esc(text).replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>').split('\n');
+            let html = '', inList = false, para = [];
+            const flush = () => { if (para.length) { html += `<p>${para.join('<br>')}</p>`; para = []; } };
+            lines.forEach(line => {
+                const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+                if (m) {
+                    flush();
+                    if (!inList) { html += '<ul>'; inList = true; }
+                    html += `<li>${m[1]}</li>`;
+                } else {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    if (line.trim() === '') flush(); else para.push(line);
+                }
+            });
+            if (inList) html += '</ul>';
+            flush();
+            return html;
+        }
+
+        function snapshot() {
+            const t = totals();
+            const c = buyCalc(state.buy.price, { totals: t });
+            return {
+                buyers: [nameOf('a'), nameOf('b')],
+                today: new Date().toISOString().slice(0, 10),
+                monthsUntilPurchase: num(state.plan.monthsToPurchase),
+                assumedAppreciationPct: num(state.plan.appreciation),
+                currentHomes: state.homes.map((h, i) => {
+                    const p = t.proj[i];
+                    return {
+                        owner: nameOf(h.id), address: `${h.street}, ${h.cityLine}`, beds: h.beds, baths: h.baths, sqft: h.sqft, yearBuilt: h.built,
+                        valueToday: num(h.value), zestimateRange: [h.low, h.high],
+                        mortgageBalance: p.balanceUnknown ? 'not entered (treated as $0)' : p.balanceNow,
+                        mortgageRatePct: h.rate, monthlyPI: h.monthlyPI, plan: h.plan,
+                        equityToday: Math.round(p.equityNow), projectedValueAtSale: Math.round(p.futureValue),
+                        sellingCosts: h.plan === 'sell' ? Math.round(p.sellingCosts) : null,
+                        netProceeds: h.plan === 'sell' ? Math.round(p.netProceeds) : null,
+                        rentPerMonth: h.plan === 'rent' ? h.rent : null,
+                        rentCashFlow: h.plan === 'rent' && num(h.rent) > 0 ? Math.round(p.rentCashFlow) : null
+                    };
+                }),
+                savings: t.savings, reserve: num(state.plan.reserve),
+                cashAvailableForPurchase: Math.round(t.spendable),
+                nextHome: {
+                    targetPrice: c.price, downPayment: Math.round(c.down), downPct: +c.downPct.toFixed(1), loan: Math.round(c.loan),
+                    ratePct: state.buy.rate, termYears: state.buy.term, monthlyTotal: Math.round(c.total),
+                    breakdown: { pi: Math.round(c.pi), tax: Math.round(c.tax), insurance: Math.round(c.ins), pmi: Math.round(c.pmi), hoa: Math.round(c.hoa) },
+                    closingCosts: Math.round(c.closing), cashLeftAfterClosing: Math.round(c.leftover),
+                    maxPriceAt20PctDown: maxPriceNoPMI(t)
+                },
+                income: state.afford,
+                mustHaves: { minBeds: state.search.minBeds, minBaths: state.search.minBaths, minGarageSpaces: state.search.minGarage, searchMaxPrice: searchMaxPrice() },
+                searchAreas: state.search.areas.filter(a => a.on).map(a => a.name),
+                savedHomes: state.saved.map(h => ({
+                    address: h.address, price: h.price, beds: h.beds, baths: h.baths, garage: h.garage, sqft: h.sqft, year: h.year, hoa: h.hoa,
+                    status: h.status, notes: h.notes, ratings: { [nameOf('a')]: h.ratingA || null, [nameOf('b')]: h.ratingB || null },
+                    estMonthly: h.price ? Math.round(buyCalc(h.price, { totals: t, hoa: h.hoa }).total) : null
+                }))
+            };
+        }
+
+        function jimSystemPrompt() {
+            return `You are Big Jim, a rock hyrax with 90s swagger who is Thorpe Tech's Chief Mascot & Chief Security Officer, moonlighting as the home-buying consultant inside the Home Vault app. You're advising ${nameOf('a')} and ${nameOf('b')}, a couple in southwest Michigan who each own a house and plan to buy one home together within about a year. Their must-haves: ${state.search.minBeds}+ bedrooms, ${state.search.minBaths}+ bathrooms, ${state.search.minGarage}+ car garage.
+
+Style: warm, direct, a little funny (occasional hyrax/sniff-test/rock-sunbathing jokes, never more than one per answer). Substance first. Use their real numbers from the snapshot, do the math, and give a clear recommendation. Keep answers under about 180 words unless they ask for detail. Use short paragraphs or "-" bullets and **bold** for key numbers. No tables, no headings.
+
+Know Michigan specifics: transfer tax is 0.86% (state 0.75% + county 0.11%) paid by sellers, with a possible state-portion exemption if the home's SEV hasn't risen since purchase; taxable value "uncaps" to SEV on sale, so a seller's tax bill understates the buyer's; file the Principal Residence Exemption (Form 2368) after closing; non-homestead property pays up to 18 extra school operating mills.
+
+You are not a licensed realtor, lender, attorney, or tax advisor. When a question needs one, say so in one short sentence. Never invent listing data, prices, or interest rates; if you don't know, say how to find out. If a number in the snapshot is missing (like a mortgage balance), point it out.
+
+Live snapshot of their plan (JSON):
+${JSON.stringify(snapshot())}`;
+        }
+
+        async function callGeminiChat(messages, systemText) {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(geminiKey())}`;
+            const payload = {
+                contents: messages.map(m => ({ role: m.role === 'model' ? 'model' : 'user', parts: [{ text: m.text }] })),
+                systemInstruction: { parts: [{ text: systemText }] },
+                generationConfig: { temperature: 0.6 }
+            };
+            const retryDelays = [2000, 5000];
+            for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+                const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if ((response.status === 429 || response.status >= 500) && attempt < retryDelays.length) {
+                    await new Promise(r => setTimeout(r, retryDelays[attempt]));
+                    continue;
+                }
+                if (!response.ok) {
+                    let detail = '';
+                    try { detail = (await response.json()).error?.message || ''; } catch (e) {}
+                    throw new Error(`Gemini error: HTTP ${response.status}${detail ? ' — ' + detail : ''}`);
+                }
+                const data = await response.json();
+                const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+                if (!raw) throw new Error('Gemini returned an empty response.');
+                return raw.trim();
+            }
+            throw new Error('Gemini error: exhausted retries');
+        }
+
+        async function callOpenRouterChat(messages, systemText) {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${openrouterKey()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: openrouterModel(),
+                    messages: [{ role: 'system', content: systemText }].concat(messages.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text })))
+                })
+            });
+            if (!response.ok) {
+                let detail = '';
+                try { detail = (await response.json()).error?.message || ''; } catch (e) {}
+                throw new Error(`OpenRouter error: HTTP ${response.status}${detail ? ' — ' + detail : ''}`);
+            }
+            const data = await response.json();
+            const raw = data.choices?.[0]?.message?.content || '';
+            if (!raw) throw new Error('OpenRouter returned an empty response.');
+            return raw.trim();
+        }
+
+        async function callJimAI(messages) {
+            const systemText = jimSystemPrompt();
+            let geminiError = null;
+            if (geminiKey()) {
+                try { return { text: await callGeminiChat(messages, systemText), provider: 'Gemini' }; }
+                catch (err) { geminiError = err; }
+            }
+            if (openrouterKey()) {
+                try { return { text: await callOpenRouterChat(messages, systemText), provider: 'OpenRouter (backup)' }; }
+                catch (err) { throw new Error(geminiError ? `Both providers failed. ${geminiError.message} | ${err.message}` : err.message); }
+            }
+            throw geminiError || new Error('No AI key configured.');
+        }
+
+        // Rule-based answers when no AI key is set
+        function playbookAnswer(q) {
+            const t = totals();
+            const c = buyCalc(state.buy.price, { totals: t });
+            const s = q.toLowerCase();
+            const A = nameOf('a'), B = nameOf('b');
+            if (/afford|how much|budget|max|price/.test(s)) {
+                const budget = housingBudget();
+                let out = `Here's the sniff test at your current numbers:\n- Cash available after reserve: **${money(t.spendable)}**\n- Highest price with 20% down (no PMI): **${money(maxPriceNoPMI(t))}**`;
+                if (budget) out += `\n- Highest price at ${money(budget.v)}/mo (${budget.src}): **${money(maxPriceForBudget(budget.v, t))}**`;
+                else out += `\n- Add your income in the Buy tab and I'll cap it by monthly payment too.`;
+                out += `\n\nAt ${money(c.price)} you'd pay about **${money(c.total)}/mo** all-in.`;
+                return out;
+            }
+            if (/sell both|both house|keep|rent/.test(s)) {
+                return `Selling both puts the most cash to work: about **${money(t.available)}** in the plan right now. Keeping one as a rental only makes sense if rent beats the mortgage, taxes, insurance, and about 10% for vacancy and upkeep, and you're OK being landlords. Flip a house to "Rent out" in the Equity tab and enter the rent to see the cash flow. Remember: after roughly 3 years as a rental you lose the tax-free sale exclusion.`;
+            }
+            if (/first|bridge|contingen|timing|when/.test(s)) {
+                return `Your down payment comes from the sales, so timing is the puzzle:\n- **Sell first** and ask for a 30 to 60 day rent-back. Safest, but you move twice if it falls apart.\n- **Contingent offer** on your sale. Simple, but sellers like it less.\n- **HELOC or bridge loan** on one house to fund the down payment, then pay it off when the houses close. Strongest offer, most risk.\nTalk to a lender about option 3 now so it's ready when you find the house.`;
+            }
+            if (/lower|payment|pmi|rate|cheaper/.test(s)) {
+                const per10k = Math.max(0, c.total - buyCalc(c.price - 10000, { totals: t }).total);
+                return `Ways to shrink **${money(c.total)}/mo**:\n- Get to 20% down to drop PMI${c.pmi > 0 ? ` (${money(c.pmi)}/mo now)` : ' (you already have)'}\n- Shop 3 lenders on the same day; rates vary more than you'd think\n- Ask the seller for credits toward a rate buydown\n- Every $10k off the price saves about ${money(per10k)}/mo\n- Refinance later if rates drop`;
+            }
+            if (/tour|look for|inspect|showing/.test(s)) {
+                return `My tour sniff list:\n- Count the garage stalls yourself, and check it's actually 2-car deep and wide\n- Roof age, furnace and water heater age (look at the labels)\n- Basement: water stains, efflorescence, sump pump\n- Windows and electrical panel (avoid Federal Pacific and fuses)\n- Ask for utility bills and the property tax millage\nThen always get an inspection, plus a sewer scope on anything pre-1980.`;
+            }
+            if (/equity/.test(s)) {
+                return `Equity today: **${money(t.equityNow)}** combined. After selling costs in ${num(state.plan.monthsToPurchase)} months you'd walk away with about **${money(t.fromSales)}** from the sales${t.anyUnknown ? `. Heads up: I'm missing a payoff balance, so that's a best case.` : '.'}`;
+            }
+            return `Good question. My built-in playbook covers affordability, selling vs. keeping, timing the sale, lowering the payment, and touring. For anything else, add a free AI key in Settings and I'll answer with ${A} and ${B}'s real numbers.`;
+        }
+
+        let chatBusy = false;
+        async function askJim(text) {
+            text = (text || '').trim();
+            if (!text || chatBusy) return;
+            chatBusy = true;
+            state.chat.push({ role: 'user', text });
+            renderChat();
+            const list = document.getElementById('chat-list');
+            list.insertAdjacentHTML('beforeend', `<div id="jim-typing" class="flex items-start gap-2.5"><img src="big_jim_avatar.jpg" alt="" class="h-8 w-8 rounded-full object-cover border border-slate-700"><div class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-400"><i class="fa-solid fa-ellipsis fa-fade"></i> sniffing...</div></div>`);
+            list.scrollTop = list.scrollHeight;
+            const btn = document.getElementById('chat-send');
+            btn.disabled = true;
+
+            let reply;
+            if (hasAI()) {
+                try {
+                    const history = state.chat.slice(-12).map(m => ({ role: m.role, text: m.text }));
+                    const r = await callJimAI(history);
+                    reply = { role: 'model', text: r.text, provider: `via ${r.provider}` };
+                } catch (err) {
+                    reply = { role: 'model', text: playbookAnswer(text), provider: `Playbook (AI failed: ${err.message.slice(0, 80)})` };
+                }
+            } else {
+                await new Promise(r => setTimeout(r, 450));
+                reply = { role: 'model', text: playbookAnswer(text), provider: 'Playbook mode' };
+            }
+            state.chat.push(reply);
+            if (state.chat.length > 60) state.chat = state.chat.slice(-60);
+            saveState();
+            chatBusy = false;
+            btn.disabled = false;
+            renderChat();
+        }
+
+        function sendChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const v = input.value;
+            input.value = '';
+            askJim(v);
+        }
+
+        function askJimAbout(id) {
+            const h = state.saved.find(x => x.id === id);
+            if (!h) return;
+            switchTab('jim');
+            const facts = [h.price ? money(h.price) : null, h.beds != null ? `${h.beds} bd` : null, h.baths != null ? `${h.baths} ba` : null, h.garage != null ? `${h.garage}-car garage` : null, h.year ? `built ${h.year}` : null].filter(Boolean).join(', ');
+            askJim(`Give me your take on ${h.address || 'this saved home'} (${facts}). Does it fit our plan and must-haves, and what should we watch out for?`);
+        }
+
+        function clearChat() {
+            state.chat = [];
+            saveState();
+            renderChat();
+        }
+
+        // ═══════════ SETTINGS ═══════════
+        function openSettings() {
+            document.getElementById('set-gemini').value = localStorage.getItem('hv_gemini_api_key') || '';
+            document.getElementById('set-gemini').placeholder = !localStorage.getItem('hv_gemini_api_key') && localStorage.getItem('wv_gemini_api_key') ? 'Using your Wealth Vault key' : 'Paste Gemini key';
+            document.getElementById('set-openrouter').value = localStorage.getItem('hv_openrouter_api_key') || '';
+            bindInputs(document.getElementById('settings-modal'));
+            openModal('settings-modal');
+        }
+
+        function saveKeys() {
+            const g = document.getElementById('set-gemini').value.trim();
+            const o = document.getElementById('set-openrouter').value.trim();
+            try {
+                g ? localStorage.setItem('hv_gemini_api_key', g) : localStorage.removeItem('hv_gemini_api_key');
+                o ? localStorage.setItem('hv_openrouter_api_key', o) : localStorage.removeItem('hv_openrouter_api_key');
+            } catch (e) {}
+            renderJim();
+            showToast(hasAI() ? 'Saved. Big Jim\'s AI brain is on.' : 'Keys cleared. Playbook mode.', 'emerald');
+        }
+
+        async function testAI() {
+            saveKeys();
+            if (!hasAI()) return showToast('Add a key first', 'rose');
+            const btn = document.getElementById('test-ai-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-1"></i>Testing';
+            try {
+                const r = await callJimAI([{ role: 'user', text: 'Say hi in one short sentence.' }]);
+                showToast(`Works via ${r.provider}`, 'emerald');
+            } catch (err) {
+                showToast(err.message.slice(0, 120), 'rose');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-plug mr-1"></i>Test';
+        }
+
+        function planBlob() {
+            const data = Object.assign({}, state, { chat: [] });
+            return new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        }
+        function planFilename() { return `home-vault-plan-${new Date().toISOString().slice(0, 10)}.json`; }
+
+        function exportPlan() {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(planBlob());
+            a.download = planFilename();
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        async function sharePlan() {
+            const file = new File([planBlob()], planFilename(), { type: 'application/json' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: 'Home Vault plan', text: 'Our Home Vault plan. Open Home Vault → Settings → Import to load it.' });
+                } catch (e) { /* user cancelled */ }
+            } else {
+                exportPlan();
+                showToast('Downloaded. Send the file to each other, then Import.', 'sky');
+            }
+        }
+
+        function importPlan(e) {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const incoming = JSON.parse(reader.result);
+                    if (!incoming || !incoming.homes || !incoming.buy) throw new Error('Not a Home Vault plan');
+                    if (!confirm('Replace the plan on this phone with the imported one?')) return;
+                    const chat = state.chat;
+                    state = mergeState(defaultState(), incoming);
+                    state.chat = chat;
+                    saveState();
+                    renderAll();
+                    closeModal('settings-modal');
+                    showToast('Plan imported', 'emerald');
+                } catch (err) {
+                    showToast('That file is not a Home Vault plan', 'rose');
+                }
+            };
+            reader.readAsText(f);
+            e.target.value = '';
+        }
+
+        function resetAll() {
+            if (!confirm('Reset Home Vault to the starting numbers? Saved homes and chat will be erased.')) return;
+            state = defaultState();
+            saveState();
+            renderAll();
+            closeModal('settings-modal');
+            showToast('Reset to the starting plan', 'sky');
+        }
+
+        // ═══════════ UI PLUMBING ═══════════
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            if (!document.querySelector('.modal:not(.hidden)')) document.body.style.overflow = '';
+        }
+
+        let toastTimer = null;
+        function showToast(msg, tone = 'sky') {
+            const el = document.getElementById('toast');
+            el.className = `fixed left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-2xl fade-in max-w-[90vw] bg-slate-900 border-${tone}-500/40 text-${tone}-200`;
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
+        }
+
+        function switchTab(tab) {
+            ['equity', 'buy', 'homes', 'jim'].forEach(t => {
+                document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+            });
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            try { localStorage.setItem('hv_tab', tab); } catch (e) {}
+            window.scrollTo({ top: 0 });
+            if (tab === 'buy') renderBuy(totals()); // chart sizes to its now-visible container
+            if (tab === 'jim') { renderJim(); renderChat(); }
+        }
+
+        function renderOutputs() {
+            const t = totals();
+            renderEquity(t);
+            renderBuy(t);
+            renderSearch();
+            renderJim();
+            document.getElementById('header-sub').textContent = `${nameOf('a')} & ${nameOf('b')}'s move planner`;
+        }
+
+        function renderAll() {
+            renderHomes();
+            renderCriteria();
+            bindInputs();
+            renderOutputs();
+            renderChat();
+        }
+
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => { if (!document.getElementById('panel-buy').classList.contains('hidden')) renderBuy(totals()); }, 150);
+        });
+
+        // Segmented controls on static panels
+        document.querySelectorAll('#down-mode-seg button').forEach(b => b.addEventListener('click', () => { state.buy.downMode = b.dataset.mode; saveState(); renderOutputs(); }));
+        document.querySelectorAll('#term-seg button').forEach(b => b.addEventListener('click', () => { state.buy.term = Number(b.dataset.term); saveState(); renderOutputs(); }));
+        document.querySelectorAll('#maxprice-seg button').forEach(b => b.addEventListener('click', () => { state.search.maxPriceMode = b.dataset.mp; saveState(); renderOutputs(); }));
+        document.querySelectorAll('#hm-status-seg button').forEach(b => b.addEventListener('click', () => setHomeStatus(b.dataset.status)));
+        document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal:not(.hidden)').forEach(m => closeModal(m.id)); });
+
+        // ═══════════ INSTALL (PWA) ═══════════
+        let deferredInstall = null;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        function showInstallButton() {
+            if (isStandalone) return;
+            const b = document.getElementById('install-btn');
+            b.classList.remove('hidden');
+            b.classList.add('flex');
+        }
+
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            deferredInstall = e;
+            document.getElementById('install-native-btn').classList.remove('hidden');
+            showInstallButton();
+        });
+
+        async function triggerInstall() {
+            if (!deferredInstall) return;
+            deferredInstall.prompt();
+            await deferredInstall.userChoice;
+            deferredInstall = null;
+            closeModal('install-modal');
+            document.getElementById('install-btn').classList.add('hidden');
+        }
+
+        if (isIOS || /android/i.test(navigator.userAgent)) showInstallButton();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('home_vault_sw.js', { scope: './home_vault' }).catch(err => console.warn('Service worker not registered:', err));
+            });
+        }
+
+        // Android share target: Zillow/Redfin app → Share → Home Vault
+        function handleSharedLink() {
+            const params = new URLSearchParams(location.search);
+            const shared = [params.get('url'), params.get('text'), params.get('title')].filter(Boolean).join(' ');
+            if (!shared) return;
+            const link = (shared.match(/https?:\/\/\S+/) || [])[0];
+            history.replaceState(null, '', location.pathname);
+            if (!link) return;
+            switchTab('homes');
+            openHomeModal(null, { url: link, address: guessAddressFromUrl(link) });
+        }
+
+        // ═══════════ BOOT ═══════════
+        renderAll();
+        let startTab = 'equity';
+        try { startTab = localStorage.getItem('hv_tab') || 'equity'; } catch (e) {}
+        switchTab(['equity', 'buy', 'homes', 'jim'].includes(startTab) ? startTab : 'equity');
+        handleSharedLink();
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "id": "home_vault",
+  "name": "Home Vault",
+  "short_name": "Home Vault",
+  "description": "Home-buying planner: equity calculator, mortgage math, Zillow/Redfin search, and Big Jim the hyrax consultant.",
+  "start_url": "home_vault.html",
+  "scope": "home_vault.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "categories": ["finance", "lifestyle", "productivity"],
+  "icons": [
+    { "src": "home_vault_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "home_vault_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "home_vault_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "home_vault.html",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
+}
